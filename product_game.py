@@ -50,27 +50,73 @@ class ProductGameBoard(NegamarkBoard):
     (x, y) = ProductGameBoard.number_locations[square_value]
     return self.squares[x][y] == ProductGameBoard.OPEN
 
+  def fourSquareValue(self, four_squares):
+    stupid_dict = [0, 0, 0]
+    stupid_dict[four_squares[0]] += 1
+    stupid_dict[four_squares[1]] += 1
+    stupid_dict[four_squares[2]] += 1
+    stupid_dict[four_squares[3]] += 1
+    other_player = self.other_player(self.active_player)
+    if stupid_dict[other_player] == 4:
+      return -1000
+    elif (stupid_dict[self.active_player] == 3 and
+          stupid_dict[NegamarkBoard.OPEN] == 1):
+      return 10
+    elif (stupid_dict[self.active_player] == 2 and
+          stupid_dict[NegamarkBoard.OPEN] == 2):
+      return 5
+    elif (stupid_dict[other_player] == 3 and
+          stupid_dict[NegamarkBoard.OPEN]):
+      return -10
+    elif (stupid_dict[other_player] == 2 and
+          stupid_dict[NegamarkBoard.OPEN] == 2):
+      return -5
+    else:
+      return 0
+
   def winner(self):
-    if self.moves_so_far < 7:
+    if self.heuristic() <= -1000:
+      return self.other_player(self.active_player)
+    else:
       return NegamarkBoard.NO_WINNER
+
+  def heuristic(self):
+    heuristic = 0
     for x in range(0, 6):
       for y in range(0, 6):
-        if self.squares[x][y] == self.active_player:
-          if self.fourInARow(x, y):
-            return self.squares[x][y]
-    return NegamarkBoard.NO_WINNER
+        value_from_here = self.value_from_here(x, y)
+        if value_from_here == -1000:
+          return -1000
+        heuristic += value_from_here
+    return heuristic
 
-  def fourDown(self, x, y):
-    return self.squares[x][y] == self.squares[x+1][y] == self.squares[x+2][y] == self.squares[x+3][y]
+  def value_from_here(self, x, y):
+    value_from_here = 0
+    if x <= 2:
+      value_from_here += self.valueFourDown(x, y)
+    if y <= 2:
+      value_from_here += self.valueFourToTheRight(x, y)
+    if x <= 2 and y <= 2:
+      value_from_here += self.valueFourDownAndRight(x, y)
+    if x <= 2 and y >= 3:
+      value_from_here += self.valueFourDownAndLeft(x, y)
+    return value_from_here
 
-  def fourToTheRight(self, x, y):
-    return self.squares[x][y] == self.squares[x][y+1] == self.squares[x][y+2] == self.squares[x][y+3]
+  def valueFourDown(self, x, y):
+    return self.fourSquareValue([self.squares[x][y], self.squares[x+1][y],
+                                 self.squares[x+2][y], self.squares[x+3][y]])
 
-  def fourDownAndRight(self, x, y):
-    return self.squares[x][y] == self.squares[x+1][y+1] == self.squares[x+2][y+2] == self.squares[x+3][y+3]
+  def valueFourToTheRight(self, x, y):
+    return self.fourSquareValue([self.squares[x][y], self.squares[x][y+1],
+                                 self.squares[x][y+2], self.squares[x][y+3]])
 
-  def fourDownAndLeft(self, x, y):
-    return self.squares[x][y] == self.squares[x+1][y-1] == self.squares[x+2][y-2] == self.squares[x+3][y-3]
+  def valueFourDownAndRight(self, x, y):
+    return self.fourSquareValue([self.squares[x][y], self.squares[x+1][y+1],
+                                 self.squares[x+2][y+2], self.squares[x+3][y+3]])
+
+  def valueFourDownAndLeft(self, x, y):
+    return self.fourSquareValue([self.squares[x][y], self.squares[x+1][y-1],
+                                 self.squares[x+2][y-2], self.squares[x+3][y-3]])
 
   def fourInARow(self, x, y):
     if x <= 2 and self.fourDown(x, y):
@@ -159,12 +205,19 @@ class ProductGameBoard(NegamarkBoard):
 
 class ProductGameMove(NegamarkMove):
   def __init__(self, top, bottom):
+    super(ProductGameMove,self).__init__()
     self.top = top
     self.bottom = bottom
 
   def __str__(self):
     return "(%d,%d)" % (self.top, self.bottom)
 
+  def __eq__(self, other):
+    if isinstance(other, self.__class__):
+      return (self.top == other.top
+              and self.bottom == other.bottom)
+    else:
+      return False
 
 def main():
 

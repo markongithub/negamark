@@ -1,6 +1,18 @@
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 from copy import deepcopy
-from negamark import NegamarkBoard
+from negamark import NegamarkBoard, NegamarkMove
 from storm_game_state_cache import StormGameStateCache
+
+class TicTacToeMove(NegamarkMove):
+
+  def __init__(self, destination_square):
+    super(TicTacToeMove,self).__init__()
+    self.destination_square = destination_square
+
+  def __str__(self):
+    return str(self.destination_square)
 
 class TicTacToeBoard(NegamarkBoard):
 
@@ -18,7 +30,7 @@ class TicTacToeBoard(NegamarkBoard):
     moves = []
     for i in range(0,9):
       if self.square_open(i):
-        moves.append(i)
+        moves.append(TicTacToeMove(i))
     return moves
 
   def square_open(self, square):
@@ -31,6 +43,16 @@ class TicTacToeBoard(NegamarkBoard):
           and self.squares[victory[0]] == self.squares[victory[2]]):
         return self.squares[victory[0]]
     return NegamarkBoard.NO_WINNER
+
+  def heuristic(self):
+    # This is lazy and backwards.
+    winner = self.winner()
+    if winner == self.active_player:
+      return 1000
+    elif winner == self.other_player(self.active_player):
+      return -1000
+    else:
+      return 0
 
   def cell_as_string(self, cell):
     if self.squares[cell] == NegamarkBoard.X:
@@ -48,10 +70,10 @@ class TicTacToeBoard(NegamarkBoard):
       print row
 
   def human_move_from_stdin(self):
-    return int(input("Don't fuck up: "))
+    return TicTacToeMove(int(input("No input checking. You can crash me: ")))
 
   def make_move(self, move):
-    self.squares[move] = self.active_player
+    self.squares[move.destination_square] = self.active_player
     self.active_player = self.other_player(self.active_player)
     self.moves_so_far += 1
 

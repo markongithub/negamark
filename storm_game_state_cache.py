@@ -13,22 +13,25 @@ class StormGameStateCache(AbstractGameStateCache):
         'SELECT name FROM sqlite_master WHERE type=\'table\' AND name ='
         '\'cached_state\'').get_all()) == 0:
       self.store.execute('CREATE TABLE cached_state (state BIGINT UNSIGNED '
-                          'PRIMARY KEY, value INTEGER, depth INTEGER)')
+                         'PRIMARY KEY, value INTEGER, depth INTEGER, '
+                         'heuristic INTEGER)')
 
   def get_outcome(self, state):
     cached_state = self.store.get(CachedState, state)
     if cached_state:
-      return Outcome(cached_state.value, cached_state.depth)
+      return Outcome(cached_state.value, cached_state.depth,
+                     cached_state.heuristic)
     else:
       return None
 
-  def save_outcome(self, state, value, depth):
+  def save_outcome(self, state, value, depth, heuristic=0):
     cached_state = self.store.get(CachedState, state)
     if cached_state:
       cached_state.value=value
       cached_state.depth=depth
+      cached_state.heuristic=heuristic
     else:
-      cached_state = CachedState(state, value, depth)
+      cached_state = CachedState(state, value, depth, heuristic)
       self.store.add(cached_state)
 
   def delete_outcome(self, state):
@@ -45,8 +48,10 @@ class CachedState(object):
   state = Int(primary=True)
   value = Int()
   depth = Int()
+  heuristic = Int()
 
-  def __init__(self, state, value, depth):
+  def __init__(self, state, value, depth, heuristic=None):
     self.state = state
     self.value = value
     self.depth = depth
+    self.heuristic = heuristic
