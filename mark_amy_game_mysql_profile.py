@@ -13,9 +13,8 @@ def main():
   mark_amy.make_move(ProductGameMove(6, 3)) #A
   mark_amy.make_move(ProductGameMove(7, 3))
   mark_amy.make_move(ProductGameMove(7, 4))
-#  mark_amy.make_move(ProductGameMove(8, 4))
-#  mark_amy.make_move(ProductGameMove(8, 6))
-# After this point O thinks he will lose by move 25
+  mark_amy.make_move(ProductGameMove(8, 4))
+  mark_amy.make_move(ProductGameMove(8, 6))
 #  mark_amy.make_move(ProductGameMove(7, 6))
 #  mark_amy.make_move(ProductGameMove(5, 6))
 # After this point O thinks he will lose by move 15
@@ -37,16 +36,12 @@ def main():
 #  mark_amy.make_move(ProductGameMove(1, 2))
 #  mark_amy.make_move(ProductGameMove(1, 3))
 
-  mark_amy.ai_deadline=60*60*24*7
-  mark_amy.minimum_search_move = 36
-  mark_amy.minimum_info_interval = 300
+  mark_amy.ai_deadline=60*15
   mark_amy.is_automated[NegamarkBoard.X] = False
   mark_amy.is_automated[NegamarkBoard.O] = True
 
-  mark_amy.play_game()
-#  mark_amy.choose_ai_move()
+  mark_amy.choose_ai_move()
 
 if __name__ == '__main__':
-  main()
-#  import profile
-#  profile.run('main()')
+  import profile
+  profile.run('main()')

@@ -96,6 +96,7 @@ class NegamarkBoard(object):
     self.active_player = NegamarkBoard.X
     self.ai_deadline = 60
     self.minimum_search_move = 2
+    self.minimum_info_interval = 120
     self.is_automated = {}
     self.is_automated[NegamarkBoard.X] = False
     self.is_automated[NegamarkBoard.O] = True
@@ -155,86 +156,6 @@ class NegamarkBoard(object):
     new_board.make_move(move)
     return new_board
 
-  def negamark(self, current_depth, path, max_depth, deadline):
-    logging.debug('negamark cd %d path "%s" md %d deadline %s' %
-                  (current_depth, path, max_depth, str(deadline)))
-    need_a_decision = (current_depth == 0)
-    heuristic = self.heuristic()
-    if heuristic >= 800:
-      logging.debug("I think %s just won after the other player's turn. That "
-                    "really shouldn't happen." %
-                    self.player_name(self.active_player))
-      return Outcome(Outcome.WIN, self.moves_so_far)
-    elif heuristic <= -800:
-      return Outcome(Outcome.LOSS, self.moves_so_far)
-    legal_moves = self.all_legal_moves()
-    num_legal_moves = len(legal_moves)
-    if num_legal_moves == 0:
-      return Outcome(Outcome.STALEMATE, self.moves_so_far)
-    if current_depth > max_depth:
-      logging.debug("current_depth %d > max_depth %d after move %d. Timeout." %           (current_depth, max_depth, self.moves_so_far))
-      return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
-    if datetime.datetime.now() > deadline and not need_a_decision:
-      logging.debug("We are past our deadline. Timeout.")
-      return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
-    best_move = NegamarkMove()
-    best_move.outcome = Outcome(Outcome.LOSS, 0) # no move is this bad
-    child_node_index = 1
-    for move in sorted(legal_moves, reverse=True):
-      #high opposites of child outcomes to low - best to worst
-      branch_name = "%d/%d" % (child_node_index, num_legal_moves)
-      logging_method = logging.debug
-      if (max_depth - current_depth) > 3:
-        logging_method = logging.info
-      logging_method(str(path) + " "+ branch_name
-                     + " cur %d max %d: then %s could move to %s..."
-                     % (current_depth, max_depth,
-                        self.player_name(self.active_player), move))
-      child_board = self.new_board_from_move(move)
-      child_outcome = None
-      cached_outcome = child_board.get_cached_outcome()
-      if cached_outcome:
-        logging.debug("The cache says " + str(cached_outcome))
-        if cached_outcome.value == Outcome.TIMEOUT:
-          #Okay say it's t12. And our current_depth is 3. And our max depth is
-          #6. And our moves_so_far is 8. Then on this turn we expect to descend
-          #to moves_so_far = 8 - 3 + 6 = 11.
-          expected_depth = self.moves_so_far - current_depth + max_depth
-          if cached_outcome.depth < expected_depth:
-            logging.debug("I think I can traverse that on this turn.")
-          else:
-            logging.debug("timeout:%d  msf:%d cur:%d max: %d ex:%d." % (
-                cached_outcome.depth, self.moves_so_far,
-                current_depth, max_depth, expected_depth))
-            child_outcome = cached_outcome
-        else:
-          child_outcome = cached_outcome
-      else:
-        logging.debug("The cache didn't have it.")
-      if not child_outcome:
-        child_outcome = child_board.negamark(current_depth=current_depth + 1,
-                                             path = path + " " + branch_name,
-                                             max_depth=max_depth,
-                                             deadline=deadline)
-        child_board.save_cached_outcome(child_outcome)
-      child_opposite = child_outcome.opposite()
-      logging_method("Then we could achieve %s", child_opposite)
-      move.outcome = child_opposite
-      if child_opposite.value == Outcome.WIN:
-        logging_method("This is a win. We could wait for a better win but why?")
-        self.save_cached_outcome(child_opposite)
-        if need_a_decision:
-          return move
-        else:
-          return child_opposite
-      best_move = max(best_move, move)
-      child_node_index += 1
-    self.save_cached_outcome(best_move.outcome)
-    if need_a_decision:
-      return best_move
-    else:
-      return best_move.outcome
-
   def first_pass(self):
     cached_outcome = self.get_cached_outcome()
     if cached_outcome:
@@ -256,66 +177,78 @@ class NegamarkBoard(object):
       return Outcome(Outcome.STALEMATE, self.moves_so_far)
     return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
 
-  def recurse(self, path, current_depth, max_depth, deadline):
+  def recurse(self, current_depth, path, max_depth, deadline):
+    selective_log = logging.debug
+#    if (max_depth - current_depth) > 6:
+    if current_depth <= 5:
+      selective_log = logging.info
+    logging_deadline = datetime.datetime.now() + datetime.timedelta(
+        seconds=self.minimum_info_interval)
+    logging.debug('recurse cd %d path "%s" md %d deadline %s' %
+                  (current_depth, path, max_depth, str(deadline)))
+    need_a_decision = (current_depth == 0)
     legal_moves = self.all_legal_moves()
-    num_legal_moves = len(legal_moves)
-    if num_legal_moves == 0:
-      return Outcome(Outcome.STALEMATE, self.moves_so_far)
-    if current_depth > max_depth:
-      logging.debug("current_depth %d > max_depth %d after move %d. Timeout." %           (current_depth, max_depth, self.moves_so_far))
-      return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
-    if datetime.datetime.now() > deadline and not need_a_decision:
-      logging.debug("We are past our deadline. Timeout.")
-      return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
     best_move = NegamarkMove()
     best_move.outcome = Outcome(Outcome.LOSS, 0) # no move is this bad
+    for move in legal_moves:
+      child_board = self.new_board_from_move(move)
+      child_outcome = child_board.first_pass()
+      move.outcome = child_outcome.opposite()
+      logging.debug('First-pass check on move %s returned %s.' %
+                    (move, move.outcome))
+      best_move = max(best_move, move)
+    if current_depth > max_depth:
+      logging.debug("current_depth %d > max_depth %d after move %d. Timeout." %           (current_depth, max_depth, self.moves_so_far))
+      return max(legal_moves).outcome
+    if datetime.datetime.now() > deadline and not need_a_decision:
+      logging.debug("We are past our deadline. Timeout.")
+      return max(legal_moves).outcome
     child_node_index = 1
-    for move in sorted(legal_moves, reverse=True):
+    pruned_moves = filter (lambda move: move.outcome.value != Outcome.LOSS,
+                           legal_moves)
+    num_pruned_moves = len(pruned_moves)
+    for move in sorted(pruned_moves, reverse=True):
+      if datetime.datetime.now() > logging_deadline:
+        selective_log = logging.info
       #high opposites of child outcomes to low - best to worst
-      branch_name = "%d/%d" % (child_node_index, num_legal_moves)
-      logging_method = logging.debug
-      if (max_depth - current_depth) > 3:
-        logging_method = logging.info
-      logging_method(str(path) + " "+ branch_name
+      branch_name = "%d/%d" % (child_node_index, num_pruned_moves)
+      selective_log(str(path) + " "+ branch_name
                      + " cur %d max %d: then %s could move to %s..."
                      % (current_depth, max_depth,
                         self.player_name(self.active_player), move))
       child_board = self.new_board_from_move(move)
-      child_outcome = None
-      cached_outcome = child_board.get_cached_outcome()
-      if cached_outcome:
-        logging.debug("The cache says " + str(cached_outcome))
-        if cached_outcome.value == Outcome.TIMEOUT:
-          #Okay say it's t12. And our current_depth is 3. And our max depth is
-          #6. And our moves_so_far is 8. Then on this turn we expect to descend
-          #to moves_so_far = 8 - 3 + 6 = 11.
-          expected_depth = self.moves_so_far - current_depth + max_depth
-          if cached_outcome.depth < expected_depth:
-            logging.debug("I think I can traverse that on this turn.")
-          else:
-            logging.debug("timeout:%d  msf:%d cur:%d max: %d ex:%d." % (
-                cached_outcome.depth, self.moves_so_far,
-                current_depth, max_depth, expected_depth))
-            child_outcome = cached_outcome
+      child_outcome_for_us = None
+      first_pass_outcome = move.outcome
+      if first_pass_outcome.value == Outcome.TIMEOUT:
+        #Okay say it's t12. And our current_depth is 3. And our max depth is
+        #6. And our moves_so_far is 8. Then on this turn we expect to descend
+        #to moves_so_far = 8 - 3 + 6 = 11.
+        expected_depth = self.moves_so_far - current_depth + max_depth
+        if first_pass_outcome.depth < expected_depth:
+          logging.debug("I think I can traverse that on this turn.")
         else:
-          child_outcome = cached_outcome
-      else:
-        logging.debug("The cache didn't have it.")
-      if not child_outcome:
-        child_outcome = child_board.negamark(current_depth=current_depth + 1,
-                                             path = path + " " + branch_name,
-                                             max_depth=max_depth,
-                                             deadline=deadline)
+          logging.debug("timeout:%d  msf:%d cur:%d max: %d ex:%d." % (
+              first_pass_outcome.depth, self.moves_so_far,
+              current_depth, max_depth, expected_depth))
+          child_outcome_for_us = first_pass_outcome
+      else: # it's a definitive win, loss, or stalemate
+        child_outcome_for_us = first_pass_outcome
+      if not child_outcome_for_us:
+        child_outcome = child_board.recurse(current_depth=current_depth + 1,
+                                            path = path + " " + branch_name,
+                                            max_depth=max_depth,
+                                            deadline=deadline)
         child_board.save_cached_outcome(child_outcome)
-      child_opposite = child_outcome.opposite()
-      move.outcome = child_opposite
-      if child_opposite.value == Outcome.WIN:
-        logging_method("This is a win. We could wait for a better win but why?")
-        self.save_cached_outcome(child_opposite)
+        child_outcome_for_us = child_outcome.opposite()
+      selective_log("Then we could achieve %s", child_outcome_for_us)
+      move.outcome = child_outcome_for_us
+      if child_outcome_for_us.value == Outcome.WIN:
+        logging.debug("This is a win. We could wait for a better win but why?")
+        self.save_cached_outcome(child_outcome_for_us)
         if need_a_decision:
           return move
         else:
-          return child_opposite
+          return child_outcome_for_us
       best_move = max(best_move, move)
       child_node_index += 1
     self.save_cached_outcome(best_move.outcome)
@@ -329,14 +262,14 @@ class NegamarkBoard(object):
         seconds=self.ai_deadline)
     print("%s will pick a move by %s"
           % (self.player_name(self.active_player), str(deadline)))
-    max_depth = 0
+    max_depth = max(1, self.minimum_search_move - self.moves_so_far)
     decision = None
     while datetime.datetime.now() < deadline:
+      decision = self.recurse(current_depth = 0,
+                              path = '',
+                              deadline=deadline,
+                              max_depth=max_depth)
       max_depth += 1
-      decision = self.negamark(current_depth = 0,
-                               path = '',
-                               deadline=deadline,
-                               max_depth=max_depth)
       if decision.outcome.value == Outcome.WIN:
         print ('%s is going to win by move %d. It is destiny.' %
                (self.player_name(self.active_player), decision.outcome.depth))

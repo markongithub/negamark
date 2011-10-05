@@ -4,6 +4,7 @@ from negamark import AbstractGameStateCache, NegamarkBoard, Outcome
 from product_game import ProductGameBoard
 from product_game import ProductGameMove
 import datetime
+import numpy
 import unittest
 
 class product_game_test(unittest.TestCase):
@@ -28,6 +29,25 @@ class product_game_test(unittest.TestCase):
                      (NegamarkBoard.O * 3 ** (4 + 24)) +
                      (9 * (6 - 1)) + (6 - 1),
                      test_board.unique_id_int())
+
+  def test_adding_two_large_integers(self):
+    self.assertEqual(9911327689934189018,
+                     1806217383896236484 + 8105110306037952534)
+
+  def test_unique_id_negative(self):
+    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board.bottomFactor = 9
+    test_board.topFactor = 9
+    self.assertEqual(80, test_board.unique_id_int())
+
+  def test_unique_id_negative_signflip(self):
+    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board.squares = numpy.array([[0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0],
+                                      [0, 2, 2, 1, 1, 0], [0, 0, 2, 0, 1, 0],
+                                      [0, 2, 0, 2, 2, 0], [0, 0, 0, 1, 1, 2]])
+    test_board.bottomFactor = 9
+    test_board.topFactor = 9
+    self.assertFalse(test_board.unique_id_int() < 0)
 
   def test_heuristic(self):
 
@@ -114,6 +134,44 @@ class product_game_test(unittest.TestCase):
     test_board.make_move(ProductGameMove(3, 9))
     test_board.make_move(ProductGameMove(3, 1))
     self.assertEqual(10, test_board.heuristic())
+
+  def test_another_scenario(self):
+    test_board = ProductGameBoard(AbstractGameStateCache())
+
+    test_board.make_move(ProductGameMove(6, 3)) #A
+    test_board.make_move(ProductGameMove(7, 3))
+    test_board.make_move(ProductGameMove(7, 4))
+    test_board.make_move(ProductGameMove(8, 4))
+    test_board.make_move(ProductGameMove(8, 6))
+    test_board.make_move(ProductGameMove(7, 6))
+    test_board.make_move(ProductGameMove(5, 6))
+    test_board.make_move(ProductGameMove(6, 6))
+    test_board.make_move(ProductGameMove(6, 9))
+    test_board.make_move(ProductGameMove(9, 9))
+    test_board.make_move(ProductGameMove(9, 8))
+    test_board.make_move(ProductGameMove(1, 8))
+    test_board.make_move(ProductGameMove(2, 8))
+    test_board.make_move(ProductGameMove(2, 6))
+    test_board.make_move(ProductGameMove(4, 6))
+    test_board.make_move(ProductGameMove(4, 1))
+    test_board.make_move(ProductGameMove(5, 1))
+    test_board.make_move(ProductGameMove(5, 9))
+    test_board.make_move(ProductGameMove(5, 8))
+    test_board.make_move(ProductGameMove(5, 4))
+    test_board.make_move(ProductGameMove(5, 2))
+    test_board.make_move(ProductGameMove(1, 2))
+    test_board.make_move(ProductGameMove(1, 3)) # amy's last move
+    test_board.make_move(ProductGameMove(3, 3)) # my theoretical suicide
+#This is move 24
+#  1  O  X  O  X  6
+#  7  O  9  X  O 14
+# 15  X  X  O  O  X
+# 25 27  X  X  O 35
+#  O  X  O  O  X 49
+#  X 56 63 64  X  O
+#Top marker is on 1
+#Bottom marker is on 3
+    self.assertEqual(Outcome.LOSS, test_board.first_pass().value)
 
 if __name__ == '__main__':
       unittest.main()

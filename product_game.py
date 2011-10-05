@@ -195,12 +195,18 @@ class ProductGameBoard(NegamarkBoard):
     return str(self.topFactor) + " " + str(self.bottomFactor) + " " + self.squares_as_string()
 
   def unique_id_int(self):
-    unique_id = 0
-    unique_id += 9 * (self.topFactor - 1) + (self.bottomFactor - 1)
+    unique_id = 0L
+    unique_id += long(9 * (self.topFactor - 1) + (self.bottomFactor - 1))
     index = 0
     for square_value in self.squares.flatten():
-      unique_id += square_value * 3 ** (4 + index)
+      to_add = long(square_value * 3 ** (4 + index))
+      unique_id += to_add
       index += 1
+    if unique_id < 0 or unique_id > (2 ** 64):
+      self.print_board()
+      print str(self.squares)
+      print "This board has a unique_id in an unacceptable value: " + str(unique_id)
+      crash
     return int(unique_id)
 
 class ProductGameMove(NegamarkMove):
