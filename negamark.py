@@ -177,6 +177,10 @@ class NegamarkBoard(object):
       return Outcome(Outcome.STALEMATE, self.moves_so_far)
     return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
 
+  def should_reconsider_move(self, move):
+    return (move.outcome.value == Outcome.TIMEOUT or
+            move.outcome.value == Outcome.WIN)
+
   def recurse(self, current_depth, path, max_depth, deadline):
     selective_log = logging.debug
 #    if (max_depth - current_depth) > 6:
@@ -203,15 +207,15 @@ class NegamarkBoard(object):
     if datetime.datetime.now() > deadline and not need_a_decision:
       logging.debug("We are past our deadline. Timeout.")
       return max(legal_moves).outcome
-    child_node_index = 1
-    pruned_moves = filter (lambda move: move.outcome.value != Outcome.LOSS,
-                           legal_moves)
+    pruned_moves = filter (self.should_reconsider_move, legal_moves)
+    num_legal_moves = len(legal_moves)
     num_pruned_moves = len(pruned_moves)
+    child_node_index = 1 + num_legal_moves - num_pruned_moves
     for move in sorted(pruned_moves, reverse=True):
       if datetime.datetime.now() > logging_deadline:
         selective_log = logging.info
       #high opposites of child outcomes to low - best to worst
-      branch_name = "%d/%d" % (child_node_index, num_pruned_moves)
+      branch_name = "%d/%d" % (child_node_index, num_legal_moves)
       selective_log(str(path) + " "+ branch_name
                      + " cur %d max %d: then %s could move to %s..."
                      % (current_depth, max_depth,
@@ -240,7 +244,10 @@ class NegamarkBoard(object):
                                             deadline=deadline)
         child_board.save_cached_outcome(child_outcome)
         child_outcome_for_us = child_outcome.opposite()
-      selective_log("Then we could achieve %s", child_outcome_for_us)
+      selective_log("%s: Then %s could achieve %s",
+                    str(path) + " "+ branch_name,
+                    self.player_name(self.active_player),
+                    child_outcome_for_us)
       move.outcome = child_outcome_for_us
       if child_outcome_for_us.value == Outcome.WIN:
         logging.debug("This is a win. We could wait for a better win but why?")
