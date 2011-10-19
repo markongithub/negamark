@@ -10,32 +10,7 @@ def main():
 
   mark_amy = ProductGameBoard(
       StormMySQLGameStateCache('mysql://productgame@localhost/productgame'))
-  mark_amy.make_move(ProductGameMove(6, 3)) #A
-  mark_amy.make_move(ProductGameMove(7, 3))
-  mark_amy.make_move(ProductGameMove(7, 4))
-#  mark_amy.make_move(ProductGameMove(8, 4))
-#  mark_amy.make_move(ProductGameMove(8, 6))
-# After this point O thinks he will lose by move 25
-#  mark_amy.make_move(ProductGameMove(7, 6))
-#  mark_amy.make_move(ProductGameMove(5, 6))
-# After this point O thinks he will lose by move 15
-#  mark_amy.make_move(ProductGameMove(6, 6))
-#  mark_amy.make_move(ProductGameMove(6, 9))
-#  mark_amy.make_move(ProductGameMove(9, 9))
-#  mark_amy.make_move(ProductGameMove(9, 8))
-#  mark_amy.make_move(ProductGameMove(1, 8))
-#  mark_amy.make_move(ProductGameMove(2, 8))
-#  mark_amy.make_move(ProductGameMove(2, 6))
-#  mark_amy.make_move(ProductGameMove(4, 6))
-# After this point O thinks he will lose by move 29
-#  mark_amy.make_move(ProductGameMove(4, 1))
-#  mark_amy.make_move(ProductGameMove(5, 1))
-#  mark_amy.make_move(ProductGameMove(5, 9))
-#  mark_amy.make_move(ProductGameMove(5, 8))
-#  mark_amy.make_move(ProductGameMove(5, 4))
-#  mark_amy.make_move(ProductGameMove(5, 2))
-#  mark_amy.make_move(ProductGameMove(1, 2))
-#  mark_amy.make_move(ProductGameMove(1, 3))
+  mark_amy.make_move(ProductGameMove(4, 4)) #A
 
   mark_amy.ai_deadline=60*60*24*7
   mark_amy.minimum_search_move = 36

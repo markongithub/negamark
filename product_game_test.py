@@ -6,6 +6,8 @@ from product_game import ProductGameMove
 import datetime
 import numpy
 import unittest
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
 
 class product_game_test(unittest.TestCase):
 
@@ -124,7 +126,7 @@ class product_game_test(unittest.TestCase):
     test_board.make_move(ProductGameMove(2, 5))
     deadline = datetime.datetime.now() + datetime.timedelta(seconds=7200)
     outcome_from_two = test_board.negamark(current_depth=1, path='',
-                                           max_depth=2, deadline=deadline)
+                                           max_depth=3, deadline=deadline)
     self.assertEqual(outcome_from_two.value, Outcome.LOSS)
 
   def test_another_heuristic(self):

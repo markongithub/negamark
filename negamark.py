@@ -106,21 +106,25 @@ class NegamarkBoard(object):
       self.cache = AbstractGameStateCache()
 
   def get_cached_outcome(self):
-    logging.debug("Checking the cache for state %s." % self.unique_id())
-    return self.cache.get_outcome(self.unique_id())
+    if self.moves_so_far <= self.max_cache_move:
+      state = self.unique_id()
+      logging.debug("Checking the cache for state %s." % state)
+      return self.cache.get_outcome(state)
 
   def save_cached_value(self, outcome_value):
-    outcome = Outcome(outcome_value, self.moves_so_far)
-    self.save_cached_outcome(outcome)
+    if self.moves_so_far <= self.max_cache_move:
+      outcome = Outcome(outcome_value, self.moves_so_far)
+      self.save_cached_outcome(outcome)
 
   def cache_value_and_return(self, outcome_value):
     self.save_cached_value(outcome_value)
     return Outcome(outcome_value, self.moves_so_far)
 
   def save_cached_outcome(self, outcome):
-    logging.debug("Saving outcome %s for %s." % (outcome, self.unique_id()))
-    self.cache.save_outcome(self.unique_id(), outcome.value, outcome.depth,
-                            outcome.heuristic)
+    if self.moves_so_far <= self.max_cache_move:
+      logging.debug("Saving outcome %s for %s because %d is totally <= %d" % (outcome, self.unique_id(), self.moves_so_far, self.max_cache_move))
+      self.cache.save_outcome(self.unique_id(), outcome.value, outcome.depth,
+                              outcome.heuristic)
 
   def uncache_this_outcome(self):
     self.cache.delete_outcome(self.unique_id())
@@ -159,7 +163,9 @@ class NegamarkBoard(object):
   def first_pass(self):
     cached_outcome = self.get_cached_outcome()
     if cached_outcome:
-      logging.debug("The cache says " + str(cached_outcome))
+      logging.debug("The cache says %s which saves us from recursing down %d "
+                    "levels." %  (str(cached_outcome),
+                                  cached_outcome.depth - self.moves_so_far))
       return cached_outcome
     else:
       logging.debug("The cache didn't have it.")
@@ -181,14 +187,14 @@ class NegamarkBoard(object):
     return (move.outcome.value == Outcome.TIMEOUT or
             move.outcome.value == Outcome.WIN)
 
-  def recurse(self, current_depth, path, max_depth, deadline):
+  def negamark(self, current_depth, path, max_depth, deadline):
     selective_log = logging.debug
 #    if (max_depth - current_depth) > 6:
-    if current_depth <= 5:
+    if current_depth <= 2:
       selective_log = logging.info
     logging_deadline = datetime.datetime.now() + datetime.timedelta(
         seconds=self.minimum_info_interval)
-    logging.debug('recurse cd %d path "%s" md %d deadline %s' %
+    logging.debug('negamark cd %d path "%s" md %d deadline %s' %
                   (current_depth, path, max_depth, str(deadline)))
     need_a_decision = (current_depth == 0)
     legal_moves = self.all_legal_moves()
@@ -238,10 +244,10 @@ class NegamarkBoard(object):
       else: # it's a definitive win, loss, or stalemate
         child_outcome_for_us = first_pass_outcome
       if not child_outcome_for_us:
-        child_outcome = child_board.recurse(current_depth=current_depth + 1,
-                                            path = path + " " + branch_name,
-                                            max_depth=max_depth,
-                                            deadline=deadline)
+        child_outcome = child_board.negamark(current_depth=current_depth + 1,
+                                             path = path + " " + branch_name,
+                                             max_depth=max_depth,
+                                             deadline=deadline)
         child_board.save_cached_outcome(child_outcome)
         child_outcome_for_us = child_outcome.opposite()
       selective_log("%s: Then %s could achieve %s",
@@ -272,10 +278,10 @@ class NegamarkBoard(object):
     max_depth = max(1, self.minimum_search_move - self.moves_so_far)
     decision = None
     while datetime.datetime.now() < deadline:
-      decision = self.recurse(current_depth = 0,
-                              path = '',
-                              deadline=deadline,
-                              max_depth=max_depth)
+      decision = self.negamark(current_depth = 0,
+                               path = '',
+                               deadline=deadline,
+                               max_depth=max_depth)
       max_depth += 1
       if decision.outcome.value == Outcome.WIN:
         print ('%s is going to win by move %d. It is destiny.' %
@@ -292,8 +298,8 @@ class NegamarkBoard(object):
                (self.player_name(self.active_player)))
         return decision
     if decision.outcome.value == Outcome.TIMEOUT:
-      print ('This move is a guess but it can hopefully get us to heuristic %d'
-             % decision.outcome.heuristic)
+      print ('This move is a guess but I think it can get us to heuristic %d by'
+             'move %d.'% (decision.outcome.heuristic, decision.outcome.depth))
     return decision
 
   def flush_cache(self):

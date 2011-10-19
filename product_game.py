@@ -1,8 +1,6 @@
 import logging
 from negamark import NegamarkBoard
 from negamark import NegamarkMove
-from negamark import AbstractGameStateCache
-from storm_game_state_cache import StormGameStateCache
 import numpy
 
 class ProductGameBoard(NegamarkBoard):
@@ -30,6 +28,7 @@ class ProductGameBoard(NegamarkBoard):
     self.topFactor = 0
     self.bottomFactor = 0
     self.minimum_search_move = 7
+    self.max_cache_move = 32
 
   def all_legal_moves(self):
     legal_products = []
@@ -42,8 +41,9 @@ class ProductGameBoard(NegamarkBoard):
       for i in range(1, 10):
         if self.square_open(i * self.bottomFactor):
           legal_products.append(ProductGameMove(i, self.bottomFactor))
-        if self.square_open(i * self.topFactor):
-          legal_products.append(ProductGameMove(self.topFactor, i))
+        if self.bottomFactor != self.topFactor:
+          if self.square_open(i * self.topFactor):
+            legal_products.append(ProductGameMove(self.topFactor, i))
     return sorted(legal_products)
 
   def square_open(self, square_value):
@@ -203,10 +203,9 @@ class ProductGameBoard(NegamarkBoard):
       unique_id += to_add
       index += 1
     if unique_id < 0 or unique_id > (2 ** 64):
-      self.print_board()
-      print str(self.squares)
-      print "This board has a unique_id in an unacceptable value: " + str(unique_id)
-      crash
+#      self.print_board()
+#      crash
+      return 0
     return int(unique_id)
 
 class ProductGameMove(NegamarkMove):
@@ -227,9 +226,10 @@ class ProductGameMove(NegamarkMove):
 
 def main():
 
-  board = ProductGameBoard(StormGameStateCache('sqlite:product_game_storm.db'))
-  board.is_automated[NegamarkBoard.X] = False
-  board.is_automated[NegamarkBoard.O] = True
+  board = ProductGameBoard(StormMySQLGameStateCache(
+      'mysql://productgame@localhost/productgame'))
+  board.is_automated[NegamarkBoard.X] = True
+  board.is_automated[NegamarkBoard.O] = False
   board.ai_deadline = 60
 
   board.play_game()
