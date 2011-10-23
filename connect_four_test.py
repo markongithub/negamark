@@ -23,12 +23,18 @@ class connect_four_test(unittest.TestCase):
 
   def test_heuristic(self):
     test_board = ConnectFourBoard(AbstractGameStateCache())
+    self.assertEqual(69, test_board.simple_scores[NegamarkBoard.X - 1])
     test_board.make_move(ConnectFourMove(3))
+    self.assertEqual(76, test_board.simple_scores[NegamarkBoard.X - 1])
+    self.assertEqual(62, test_board.simple_scores[NegamarkBoard.O - 1])
+    self.assertEqual(-14, test_board.heuristic())
     test_board.make_move(ConnectFourMove(0))
     test_board.make_move(ConnectFourMove(3))
     test_board.make_move(ConnectFourMove(2))
     test_board.make_move(ConnectFourMove(3))
-    self.assertEqual(-15, test_board.heuristic())
+    test_board.make_move(ConnectFourMove(2))
+    test_board.make_move(ConnectFourMove(3))
+    self.assertTrue(test_board.heuristic() <= -1000)
 
   def test_num_potential_wins(self):
     test_board = ConnectFourBoard(AbstractGameStateCache())

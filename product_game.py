@@ -19,16 +19,85 @@ class ProductGameBoard(NegamarkBoard):
       36: (4, 0), 40: (4, 1), 42: (4, 2), 45: (4, 3), 48: (4, 4), 49: (4, 5),
       54: (5, 0), 56: (5, 1), 63: (5, 2), 64: (5, 3), 72: (5, 4), 81: (5, 5)}
 
-  def __init__(self, cache, prepopulated_squares=None):
+  def __init__(self, cache, squares=None,
+               win_scores=None, simple_scores=None, potential_win_matrix=None):
     super(ProductGameBoard,self).__init__(cache)
-    if prepopulated_squares is not None:
-      self.squares = prepopulated_squares
+    self.rows = 6
+    self.columns = 6
+    if squares is not None:
+      self.squares = squares
     else:
       self.squares = numpy.zeros((6, 6), int)
+    if win_scores is not None:
+      self.win_scores = win_scores
+    else:
+      self.win_scores = self.initial_scores()
+    if simple_scores is not None:
+      self.simple_scores = simple_scores
+    else:
+      self.simple_scores = map(sum, self.win_scores)
+    if potential_win_matrix is not None:
+      self.potential_win_matrix = potential_win_matrix
+    else:
+      self.potential_win_matrix = self.generate_potential_win_matrix()
     self.topFactor = 0
     self.bottomFactor = 0
     self.minimum_search_move = 7
     self.max_cache_move = 32
+
+  def initial_scores(self):
+    return numpy.ones((2, self.num_potential_wins()), int)
+
+  def generate_potential_win_matrix(self):
+    potential_win_matrix = []
+    # initialize empty list of lists of lists - slow as shit but only once
+    for x in range(0, self.rows):
+      row_list = []
+      for y in range(0, self.columns):
+        cell_list = []
+        row_list.append(cell_list)
+      potential_win_matrix.append(row_list)
+    win_index = 0
+    # So, for every cell, we are going to have a list of "win indices" for that
+    # cell. Take row 1 column 3 on a 7X6 board. From there there are six
+    # potential wins on the horizontal access. Some going up, some going
+    # diagonal, etc.  This table will tell us that from row 1 column 3 we can
+    # get to, say, wins 23, 98, and 122.
+    # first the left-to-right wins
+    for x in range(0, self.rows):
+      for y in range(0, self.columns - 4 + 1):
+        for i in range(0, 4):
+           potential_win_matrix[x][y + i].append(win_index)
+        win_index += 1
+    # now the downward (upward?) wins
+    for x in range(0, self.rows - 4 + 1):
+      for y in range(0, self.columns):
+        for i in range(0, 4):
+           potential_win_matrix[x + i][y].append(win_index)
+        win_index += 1
+    # now the downward (upward?) and right wins
+    for x in range(0, self.rows - 4 + 1):
+      for y in range(0, self.columns - 4 + 1):
+        for i in range(0, 4):
+           potential_win_matrix[x + i][y + i].append(win_index)
+        win_index += 1
+    # now the downward (upward?) and left wins
+    for x in range(0, self.rows - 4 + 1):
+      for y in range(4 - 1, self.columns):
+        for i in range(0, 4):
+           potential_win_matrix[x + i][y - i].append(win_index)
+        win_index += 1
+    return potential_win_matrix
+
+  def num_potential_wins(self):
+    num_potential_wins = 0
+    # horizontal wins
+    num_potential_wins += self.rows * (self.columns - 4 + 1)
+    # vertical wins
+    num_potential_wins += self.columns * (self.rows - 4 + 1)
+    # down-and-right wins plus down-and-left wins
+    num_potential_wins += 2 * ((self.columns - 4 + 1) * (self.rows - 4 + 1))
+    return num_potential_wins
 
   def all_legal_moves(self):
     legal_products = []
@@ -81,14 +150,9 @@ class ProductGameBoard(NegamarkBoard):
       return NegamarkBoard.NO_WINNER
 
   def heuristic(self):
-    heuristic = 0
-    for x in range(0, 6):
-      for y in range(0, 6):
-        value_from_here = self.value_from_here(x, y)
-        if value_from_here == -1000:
-          return -1000
-        heuristic += value_from_here
-    return heuristic
+    return self.simple_scores[
+       self.active_player - 1] - self.simple_scores[self.other_player(
+           self.active_player) - 1]
 
   def value_from_here(self, x, y):
     value_from_here = 0
@@ -168,13 +232,37 @@ class ProductGameBoard(NegamarkBoard):
     self.bottomFactor = move.bottom
     (x, y) = ProductGameBoard.number_locations[move.bottom * move.top]
     self.squares[x][y] = self.active_player
+    self.update_scores(x, y)
     self.active_player = self.other_player(self.active_player)
     self.moves_so_far += 1
 
+  def update_scores(self, row, column):
+    our_index = self.active_player - 1
+    opponent_index = self.other_player(self.active_player) - 1
+    for potential_win in self.potential_win_matrix[row][column]:
+      if self.win_scores[our_index][potential_win] == 8:
+        # We win here. We can stop keeping track of anything else.
+        self.simple_scores[our_index] = 1000
+        self.simple_scores[opponent_index] = -1000
+        break
+      else:
+        our_difference = self.win_scores[our_index][potential_win]
+        opponent_difference = self.win_scores[opponent_index][potential_win]
+        self.win_scores[our_index][potential_win] <<= 1
+        self.win_scores[opponent_index][potential_win] = 0
+        self.simple_scores[our_index] += our_difference
+        self.simple_scores[opponent_index] -= opponent_difference
+
   def copy_board(self):
     copied_squares = self.squares.copy()
-    new_board = ProductGameBoard(prepopulated_squares=copied_squares,
-                                 cache=self.cache)
+    copied_win_scores = self.win_scores.copy()
+    copied_simple_scores = self.simple_scores[:]
+    # We don't copy potential_win_matrix. It never changes so all objects can
+    # share it.
+    new_board = ProductGameBoard(squares=copied_squares, cache=self.cache,
+                                 win_scores = copied_win_scores,
+                                 simple_scores = copied_simple_scores,
+                                 potential_win_matrix=self.potential_win_matrix)
     new_board.moves_so_far = self.moves_so_far
     return new_board
 

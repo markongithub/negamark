@@ -57,18 +57,11 @@ class product_game_test(unittest.TestCase):
     test_board.make_move(ProductGameMove(3, 6))
     test_board.make_move(ProductGameMove(3, 3))
     test_board.make_move(ProductGameMove(3, 9))
-    self.assertEqual(-5, test_board.valueFourDownAndLeft(0, 4))
-    self.assertEqual(-5, test_board.valueFourDownAndLeft(1, 3))
-    self.assertEqual(-10, test_board.heuristic())
     test_board.make_move(ProductGameMove(3, 4))
-    self.assertEqual(0, test_board.heuristic())
     test_board.make_move(ProductGameMove(4, 9))
-    self.assertEqual(-5, test_board.heuristic())
     test_board.make_move(ProductGameMove(2, 4))
-    self.assertEqual(-5, test_board.heuristic())
     test_board.make_move(ProductGameMove(2, 5))
-    self.assertEqual(-1000, test_board.valueFourDownAndLeft(1, 3))
-    self.assertEqual(-1000, test_board.heuristic())
+    self.assertEqual(-2000, test_board.heuristic())
 
   def test_four_square_value(self):
     test_board = ProductGameBoard(AbstractGameStateCache())
@@ -126,16 +119,10 @@ class product_game_test(unittest.TestCase):
     test_board.make_move(ProductGameMove(2, 5))
     deadline = datetime.datetime.now() + datetime.timedelta(seconds=7200)
     outcome_from_two = test_board.negamark(current_depth=1, path='',
-                                           max_depth=3, deadline=deadline)
+                                           max_depth=3, deadline=deadline,
+                                           alpha=Outcome(Outcome.LOSS, 0),
+                                           beta=Outcome(Outcome.WIN, 0))
     self.assertEqual(outcome_from_two.value, Outcome.LOSS)
-
-  def test_another_heuristic(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
-    test_board.make_move(ProductGameMove(3, 6))
-    test_board.make_move(ProductGameMove(3, 3))
-    test_board.make_move(ProductGameMove(3, 9))
-    test_board.make_move(ProductGameMove(3, 1))
-    self.assertEqual(10, test_board.heuristic())
 
   def test_another_scenario(self):
     test_board = ProductGameBoard(AbstractGameStateCache())

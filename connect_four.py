@@ -35,11 +35,7 @@ class ConnectFourBoard(NegamarkBoard):
     self.max_cache_move = 39
 
   def initial_scores(self):
-    player_potential_values = []
-    for player in [0, 1]:
-      potential_value = numpy.ones(self.num_potential_wins(), int)
-      player_potential_values.append(potential_value)
-    return player_potential_values
+    return numpy.ones((2, self.num_potential_wins()), int)
 
   def generate_potential_win_matrix(self):
     potential_win_matrix = []
@@ -130,14 +126,9 @@ class ConnectFourBoard(NegamarkBoard):
       return NegamarkBoard.NO_WINNER
 
   def heuristic(self):
-    heuristic = 0
-    for x in range(0, self.rows):
-      for y in range(0, self.columns):
-        value_from_here = self.value_from_here(x, y)
-        if value_from_here == -1000:
-          return -1000
-        heuristic += value_from_here
-    return heuristic
+    return self.simple_scores[
+       self.active_player - 1] - self.simple_scores[self.other_player(
+           self.active_player) - 1]
 
   def value_from_here(self, x, y):
     value_from_here = 0
@@ -212,24 +203,27 @@ class ConnectFourBoard(NegamarkBoard):
       if self.squares[row][move.column] == NegamarkBoard.OPEN:
         self.squares[row][move.column] = self.active_player
         self.zobrist = self.zobrist ^ self.zobrist_key_for_move(row, move.column)
-        our_index = self.active_player - 1
-        opponent_index = self.other_player(self.active_player) - 1
-        for potential_win in self.potential_win_matrix[row][move.column]:
-          if self.win_scores[our_index][potential_win] == 8:
-            # We win here. We can stop keeping track of anything else.
-            self.simple_scores[our_index] = 1000
-            self.simple_scores[opponent_index] = -1000
-            break
-          else:
-            our_difference = self.win_scores[our_index][potential_win]
-            opponent_difference = self.win_scores[opponent_index][potential_win]
-            self.win_scores[our_index][potential_win] <<= 1
-            self.win_scores[opponent_index][potential_win] = 0
-            self.simple_scores[our_index] += our_difference
-            self.simple_scores[opponent_index] += opponent_difference
+        self.update_scores(row, move.column)
         break
     self.moves_so_far += 1
     self.active_player = self.other_player(self.active_player)
+
+  def update_scores(self, row, column):
+    our_index = self.active_player - 1
+    opponent_index = self.other_player(self.active_player) - 1
+    for potential_win in self.potential_win_matrix[row][column]:
+      if self.win_scores[our_index][potential_win] == 8:
+	# We win here. We can stop keeping track of anything else.
+	self.simple_scores[our_index] = 1000
+	self.simple_scores[opponent_index] = -1000
+	break
+      else:
+	our_difference = self.win_scores[our_index][potential_win]
+	opponent_difference = self.win_scores[opponent_index][potential_win]
+	self.win_scores[our_index][potential_win] <<= 1
+	self.win_scores[opponent_index][potential_win] = 0
+	self.simple_scores[our_index] += our_difference
+	self.simple_scores[opponent_index] -= opponent_difference
 
   def zobrist_index_for_move(self, row, column):
     return (self.columns * row + column) * 2 + self.active_player - 1
@@ -240,7 +234,7 @@ class ConnectFourBoard(NegamarkBoard):
   def copy_board(self):
     copied_squares = self.squares.copy()
     copied_win_scores = self.win_scores.copy()
-    copied_simple_scores = self.simple_scores.copy()
+    copied_simple_scores = self.simple_scores[:]
     # We don't copy potential_win_matrix. It never changes so all objects can
     # share it.
     new_board = ConnectFourBoard(squares=copied_squares, cache=self.cache,
