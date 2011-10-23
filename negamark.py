@@ -187,15 +187,17 @@ class NegamarkBoard(object):
     return (move.outcome.value == Outcome.TIMEOUT or
             move.outcome.value == Outcome.WIN)
 
-  def negamark(self, current_depth, path, max_depth, deadline):
+  def negamark(self, current_depth, path, max_depth, deadline, alpha, beta):
     selective_log = logging.debug
-#    if (max_depth - current_depth) > 6:
-    if current_depth <= 2:
+    if current_depth <= 1:
       selective_log = logging.info
     logging_deadline = datetime.datetime.now() + datetime.timedelta(
         seconds=self.minimum_info_interval)
-    logging.debug('negamark cd %d path "%s" md %d deadline %s' %
-                  (current_depth, path, max_depth, str(deadline)))
+    logging.debug('negamark cd %d path "%s" md %d alpha %s beta %s' %
+                  (current_depth, path, max_depth, str(alpha), str(beta)))
+    if alpha > beta and alpha.value != Outcome.STALEMATE:
+      logging.debug("Alpha should not be better than beta for non-stalemates.")
+      crash
     need_a_decision = (current_depth == 0)
     legal_moves = self.all_legal_moves()
     best_move = NegamarkMove()
@@ -247,7 +249,9 @@ class NegamarkBoard(object):
         child_outcome = child_board.negamark(current_depth=current_depth + 1,
                                              path = path + " " + branch_name,
                                              max_depth=max_depth,
-                                             deadline=deadline)
+                                             deadline=deadline,
+                                             alpha=beta.opposite(),
+                                             beta=alpha.opposite())
         child_board.save_cached_outcome(child_outcome)
         child_outcome_for_us = child_outcome.opposite()
       selective_log("%s: Then %s could achieve %s",
@@ -263,6 +267,11 @@ class NegamarkBoard(object):
         else:
           return child_outcome_for_us
       best_move = max(best_move, move)
+      alpha = max(alpha, best_move.outcome)
+      if alpha >= beta:
+        logging.debug("We're pruning because %s >= %s! I don't know what that "
+                      "means!" % (str(alpha), str(beta)))
+        break
       child_node_index += 1
     self.save_cached_outcome(best_move.outcome)
     if need_a_decision:
@@ -281,7 +290,9 @@ class NegamarkBoard(object):
       decision = self.negamark(current_depth = 0,
                                path = '',
                                deadline=deadline,
-                               max_depth=max_depth)
+                               max_depth=max_depth,
+                               alpha=Outcome(Outcome.LOSS, 0),
+                               beta=Outcome(Outcome.WIN, 0))
       max_depth += 1
       if decision.outcome.value == Outcome.WIN:
         print ('%s is going to win by move %d. It is destiny.' %

@@ -19,8 +19,7 @@ class connect_four_test(unittest.TestCase):
 
     test_board = ConnectFourBoard(AbstractGameStateCache())
     test_board.make_move(ConnectFourMove(0))
-    self.assertEqual(0L ^ 7281302469423965948L,
-                     test_board.unique_id())
+    self.assertEqual(0L ^ 11535137346879502140L, test_board.unique_id())
 
   def test_heuristic(self):
     test_board = ConnectFourBoard(AbstractGameStateCache())
@@ -31,20 +30,21 @@ class connect_four_test(unittest.TestCase):
     test_board.make_move(ConnectFourMove(3))
     self.assertEqual(-15, test_board.heuristic())
 
+  def test_num_potential_wins(self):
+    test_board = ConnectFourBoard(AbstractGameStateCache())
+    self.assertEqual(6 * 4 + 7 * 3 + 2 * 4 * 3, test_board.num_potential_wins())
 
-#  def test_endgame(self):
-#    test_board = ConnectFourBoard(AbstractGameStateCache())
-#    test_board.make_move(ConnectFourMove(1))
-#    test_board.make_move(ConnectFourMove(2))
-#    test_board.make_move(ConnectFourMove(1))
-#    test_board.make_move(ConnectFourMove(1))
-#    test_board.make_move(ConnectFourMove(3))
-#    test_board.make_move(ConnectFourMove(1))
-#    test_board.make_move(ConnectFourMove(1))
-#    test_board.make_move(ConnectFourMove(4))
-#
-#    test_board.minimum_search_move = 0
-#    self.assertEqual(5, test_board.choose_ai_move().column)
+  def test_initial_win_scores(self):
+    test_board = ConnectFourBoard(AbstractGameStateCache())
+    self.assertEqual(test_board.num_potential_wins(),
+                     len(test_board.win_scores[0]))
+
+  def test_potential_win_matrix(self):
+    test_board = ConnectFourBoard(AbstractGameStateCache())
+    self.assertEqual(3, len(test_board.potential_win_matrix[0][0])),
+    self.assertEqual(13, len(test_board.potential_win_matrix[3][3])),
+    self.assertEqual(3, len(test_board.potential_win_matrix[5][6])),
+    
 
 
 if __name__ == '__main__':
