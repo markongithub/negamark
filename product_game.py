@@ -42,6 +42,7 @@ class ProductGameBoard(NegamarkBoard):
       self.potential_win_matrix = self.generate_potential_win_matrix()
     self.topFactor = 0
     self.bottomFactor = 0
+    self.unique_id_faster = 0L
     self.minimum_search_move = 7
     self.max_cache_move = 32
 
@@ -228,13 +229,33 @@ class ProductGameBoard(NegamarkBoard):
   def make_move(self, move):
     if move.top > move.bottom:
       move.top, move.bottom = move.bottom, move.top #less complexity
+    if self.unique_id_faster != 0:
+      self.unique_id_faster -= long(9 * (self.topFactor - 1) +
+                                    (self.bottomFactor - 1))
     self.topFactor = move.top
     self.bottomFactor = move.bottom
     (x, y) = ProductGameBoard.number_locations[move.bottom * move.top]
     self.squares[x][y] = self.active_player
     self.update_scores(x, y)
+    self.unique_id_faster += long(9 * (self.topFactor - 1) +
+                                  (self.bottomFactor - 1))
+    self.unique_id_faster += long(self.active_player * 3 ** (6 * x + y + 4))
     self.active_player = self.other_player(self.active_player)
     self.moves_so_far += 1
+
+  def unique_id_int(self):
+    unique_id = 0L
+    unique_id += long(9 * (self.topFactor - 1) + (self.bottomFactor - 1))
+    index = 0
+    for square_value in self.squares.flatten():
+      to_add = long(square_value * 3 ** (4 + index))
+      unique_id += to_add
+      index += 1
+    if unique_id < 0 or unique_id > (2 ** 64):
+#      self.print_board()
+#      crash
+      return 0
+    return int(unique_id)
 
   def update_scores(self, row, column):
     our_index = self.active_player - 1
@@ -263,7 +284,11 @@ class ProductGameBoard(NegamarkBoard):
                                  win_scores = copied_win_scores,
                                  simple_scores = copied_simple_scores,
                                  potential_win_matrix=self.potential_win_matrix)
+    new_board.topFactor = self.topFactor
+    new_board.bottomFactor = self.bottomFactor
+    new_board.unique_id_faster = self.unique_id_faster
     new_board.moves_so_far = self.moves_so_far
+    new_board.max_cache_move = self.max_cache_move
     return new_board
 
   def squares_as_string(self):
@@ -274,27 +299,13 @@ class ProductGameBoard(NegamarkBoard):
     return squares_as_string
 
   def unique_id(self):
-    return self.unique_id_int()
+    return self.unique_id_faster
 
   def unique_id_using_only_str(self):
     return str(self.squares) + str([self.topFactor, self.bottomFactor])
 
   def unique_id_using_squares_as_string(self):
     return str(self.topFactor) + " " + str(self.bottomFactor) + " " + self.squares_as_string()
-
-  def unique_id_int(self):
-    unique_id = 0L
-    unique_id += long(9 * (self.topFactor - 1) + (self.bottomFactor - 1))
-    index = 0
-    for square_value in self.squares.flatten():
-      to_add = long(square_value * 3 ** (4 + index))
-      unique_id += to_add
-      index += 1
-    if unique_id < 0 or unique_id > (2 ** 64):
-#      self.print_board()
-#      crash
-      return 0
-    return int(unique_id)
 
 class ProductGameMove(NegamarkMove):
   def __init__(self, top, bottom):

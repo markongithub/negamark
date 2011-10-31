@@ -58,7 +58,7 @@ class Outcome(object):
       value_string = "STALEMATE"
     elif self.value == Outcome.TIMEOUT:
       if self.heuristic is not None:
-        value_string = "TIMEOUT-%d" % self.heuristic
+        value_string = "TIMEOUT%d" % self.heuristic
       else:
         value_string = "TIMEOUT"
     else:
@@ -96,7 +96,7 @@ class NegamarkBoard(object):
     self.active_player = NegamarkBoard.X
     self.ai_deadline = 60
     self.minimum_search_move = 2
-    self.minimum_info_interval = 120
+    self.minimum_info_interval = 300
     self.is_automated = {}
     self.is_automated[NegamarkBoard.X] = False
     self.is_automated[NegamarkBoard.O] = True
@@ -188,18 +188,25 @@ class NegamarkBoard(object):
             move.outcome.value == Outcome.WIN)
 
   def negamark(self, current_depth, path, max_depth, deadline, alpha, beta):
-    selective_log = logging.debug
     if current_depth <= 1:
       selective_log = logging.info
+    else:
+      selective_log = logging.debug
     logging_deadline = datetime.datetime.now() + datetime.timedelta(
         seconds=self.minimum_info_interval)
     logging.debug('negamark cd %d path "%s" md %d alpha %s beta %s' %
                   (current_depth, path, max_depth, str(alpha), str(beta)))
-    if alpha > beta and alpha.value != Outcome.STALEMATE:
+    if (alpha > beta and alpha.value != Outcome.STALEMATE and
+        beta.value != Outcome.STALEMATE):
       logging.debug("Alpha should not be better than beta for non-stalemates.")
       crash
     need_a_decision = (current_depth == 0)
     legal_moves = self.all_legal_moves()
+    num_legal_moves = len(legal_moves)
+    if num_legal_moves == 0:
+      stalemate = Outcome(Outcome.STALEMATE, self.moves_so_far)
+      self.save_cached_outcome(stalemate)
+      return stalemate
     best_move = NegamarkMove()
     best_move.outcome = Outcome(Outcome.LOSS, 0) # no move is this bad
     for move in legal_moves:
@@ -216,12 +223,9 @@ class NegamarkBoard(object):
       logging.debug("We are past our deadline. Timeout.")
       return max(legal_moves).outcome
     pruned_moves = filter (self.should_reconsider_move, legal_moves)
-    num_legal_moves = len(legal_moves)
     num_pruned_moves = len(pruned_moves)
     child_node_index = 1 + num_legal_moves - num_pruned_moves
     for move in sorted(pruned_moves, reverse=True):
-      if datetime.datetime.now() > logging_deadline:
-        selective_log = logging.info
       #high opposites of child outcomes to low - best to worst
       branch_name = "%d/%d" % (child_node_index, num_legal_moves)
       selective_log(str(path) + " "+ branch_name
@@ -237,7 +241,9 @@ class NegamarkBoard(object):
         #to moves_so_far = 8 - 3 + 6 = 11.
         expected_depth = self.moves_so_far - current_depth + max_depth
         if first_pass_outcome.depth < expected_depth:
-          logging.debug("I think I can traverse that on this turn.")
+          logging.debug("I think I can traverse that on this turn because %d "
+                        " is less than %d." %
+                        (first_pass_outcome.depth, expected_depth))
         else:
           logging.debug("timeout:%d  msf:%d cur:%d max: %d ex:%d." % (
               first_pass_outcome.depth, self.moves_so_far,
@@ -254,6 +260,8 @@ class NegamarkBoard(object):
                                              beta=alpha.opposite())
         child_board.save_cached_outcome(child_outcome)
         child_outcome_for_us = child_outcome.opposite()
+      if datetime.datetime.now() > logging_deadline:
+        selective_log = logging.info
       selective_log("%s: Then %s could achieve %s",
                     str(path) + " "+ branch_name,
                     self.player_name(self.active_player),
@@ -284,7 +292,10 @@ class NegamarkBoard(object):
         seconds=self.ai_deadline)
     print("%s will pick a move by %s"
           % (self.player_name(self.active_player), str(deadline)))
-    max_depth = max(1, self.minimum_search_move - self.moves_so_far)
+    if self.moves_so_far % 2 == 0:
+      max_depth = max(2, self.minimum_search_move - self.moves_so_far)
+    else:
+      max_depth = max(1, self.minimum_search_move - self.moves_so_far)
     decision = None
     while datetime.datetime.now() < deadline:
       decision = self.negamark(current_depth = 0,
@@ -293,7 +304,7 @@ class NegamarkBoard(object):
                                max_depth=max_depth,
                                alpha=Outcome(Outcome.LOSS, 0),
                                beta=Outcome(Outcome.WIN, 0))
-      max_depth += 1
+      max_depth += 2
       if decision.outcome.value == Outcome.WIN:
         print ('%s is going to win by move %d. It is destiny.' %
                (self.player_name(self.active_player), decision.outcome.depth))

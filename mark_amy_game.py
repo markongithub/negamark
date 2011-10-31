@@ -10,10 +10,14 @@ def main():
 
   mark_amy = ProductGameBoard(
       StormMySQLGameStateCache('mysql://productgame@localhost/productgame'))
-  mark_amy.make_move(ProductGameMove(4, 4)) #A
+  mark_amy.make_move(ProductGameMove(6, 3)) #A
+#  mark_amy.make_move(ProductGameMove(7, 3)) 
+#  mark_amy.make_move(ProductGameMove(7, 4)) 
+#  mark_amy.make_move(ProductGameMove(8, 4)) 
+#  mark_amy.make_move(ProductGameMove(8, 6)) 
 
-  mark_amy.ai_deadline=60*60*8
-  mark_amy.minimum_search_move = 36
+  mark_amy.ai_deadline=60*60*24*7
+  mark_amy.minimum_search_move = 0
   mark_amy.minimum_info_interval = 300
   mark_amy.is_automated[NegamarkBoard.X] = False
   mark_amy.is_automated[NegamarkBoard.O] = True

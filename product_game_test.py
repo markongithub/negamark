@@ -31,6 +31,31 @@ class product_game_test(unittest.TestCase):
                      (NegamarkBoard.O * 3 ** (4 + 24)) +
                      (9 * (6 - 1)) + (6 - 1),
                      test_board.unique_id_int())
+    self.assertEqual(test_board.unique_id_int(), test_board.unique_id_faster)
+
+  def test_unique_id_faster(self):
+    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board.make_move(ProductGameMove(6, 3))
+    test_board.make_move(ProductGameMove(7, 3))
+    test_board.make_move(ProductGameMove(7, 4))
+    test_board.make_move(ProductGameMove(8, 4))
+    test_board.make_move(ProductGameMove(8, 6))
+    test_board.make_move(ProductGameMove(7, 6))
+    test_board.make_move(ProductGameMove(5, 6))
+    test_board.make_move(ProductGameMove(6, 6))
+    self.assertEqual(test_board.unique_id_int(), test_board.unique_id_faster)
+
+  def test_unique_id_copied(self):
+    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board.make_move(ProductGameMove(1, 1))
+    self.assertEqual(test_board.unique_id_int(), test_board.unique_id_faster)
+    copied_board = test_board.copy_board()
+    self.assertEqual(copied_board.unique_id_faster, test_board.unique_id_faster)
+    self.assertEqual(copied_board.unique_id_int(), test_board.unique_id_int())
+    self.assertEqual(copied_board.unique_id_int(),
+                     copied_board.unique_id_faster)
+    new_board = test_board.new_board_from_move(ProductGameMove(1, 2))
+    self.assertEqual(new_board.unique_id_int(), new_board.unique_id_faster)
 
   def test_adding_two_large_integers(self):
     self.assertEqual(9911327689934189018,
