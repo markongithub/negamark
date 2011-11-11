@@ -4,28 +4,25 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 from negamark import AbstractGameStateCache, NegamarkBoard
 from product_game import ProductGameBoard, ProductGameMove
-from redis_game_state_cache import RedisGameStateCache
 from storm_mysql_game_state_cache import StormMySQLGameStateCache
 
 def main():
 
-  mark_amy = ProductGameBoard(
-      StormMySQLGameStateCache('mysql://productgame@localhost/productgame'))
+  my_board = ProductGameBoard(
+      StormMySQLGameStateCache('mysql://productgame@127.0.0.1:3307/productgame'))
 #      RedisGameStateCache('localhost'))
 #      AbstractGameStateCache())
-  mark_amy.make_move(ProductGameMove(4, 4)) #A
+  my_board.make_move(ProductGameMove(4, 4))
 
-  mark_amy.ai_deadline=999999
-#  mark_amy.ai_deadline=300
-#  mark_amy.ai_deadline=60
-  mark_amy.minimum_search_move = 36
-  mark_amy.minimum_info_interval = 300
-  mark_amy.max_cache_move=13
-  mark_amy.is_automated[NegamarkBoard.X] = False
-  mark_amy.is_automated[NegamarkBoard.O] = True
+  my_board.ai_deadline=999999
+  my_board.minimum_search_move = 24
+  my_board.max_cache_move = 12
+  my_board.minimum_info_interval = 15
+  my_board.is_automated[NegamarkBoard.X] = True
+  my_board.is_automated[NegamarkBoard.O] = False
 
-  mark_amy.play_game()
-#  mark_amy.choose_ai_move()
+  my_board.choose_ai_move()
+  my_board.flush_cache()
 
 if __name__ == '__main__':
   main()
