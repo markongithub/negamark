@@ -97,6 +97,8 @@ class NegamarkBoard(object):
     self.ai_deadline = 60
     self.minimum_search_move = 2
     self.minimum_info_interval = 300
+    self.initial_alpha = Outcome(Outcome.LOSS, 0)
+    self.initial_beta = Outcome(Outcome.WIN, 0)
     self.is_automated = {}
     self.is_automated[NegamarkBoard.X] = False
     self.is_automated[NegamarkBoard.O] = True
@@ -302,8 +304,8 @@ class NegamarkBoard(object):
                                path = '',
                                deadline=deadline,
                                max_depth=max_depth,
-                               alpha=Outcome(Outcome.LOSS, 0),
-                               beta=Outcome(Outcome.WIN, 0))
+                               alpha=self.initial_alpha,
+                               beta=self.initial_beta)
       max_depth += 2
       if decision.outcome.value == Outcome.WIN:
         print ('%s is going to win by move %d. It is destiny.' %
