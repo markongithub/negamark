@@ -5,14 +5,14 @@ import datetime
 import logging
 import random
 
-class CachedState(object):
+class Transposition(object):
   def __init__(self, state, value, depth):
     self.state = state
     self.value = value
     self.depth = depth
 
 
-class AbstractGameStateCache(object):
+class AbstractTranspositionTable(object):
 
   def get_outcome(self, state):
     return None
@@ -90,7 +90,7 @@ class NegamarkBoard(object):
 
   (OPEN, O, X, NO_WINNER) = (0, 1, 2, 3)
 
-  def __init__(self, cache=None):
+  def __init__(self, transposition_table=None):
     self.moves_so_far = 0
     self.previous_unique_id = None
     self.active_player = NegamarkBoard.X
@@ -102,39 +102,27 @@ class NegamarkBoard(object):
     self.is_automated = {}
     self.is_automated[NegamarkBoard.X] = False
     self.is_automated[NegamarkBoard.O] = True
-    if cache:
-      self.cache = cache
+    if transposition_table:
+      self.transposition_table = transposition_table
     else:
-      self.cache = AbstractGameStateCache()
+      self.transposition_table = AbstractTranspositionTable()
 
-  def get_cached_outcome(self):
-    if self.moves_so_far <= self.max_cache_move:
+  def get_transposition_outcome(self):
+    if self.moves_so_far <= self.max_transposition_table_move:
       state = self.unique_id()
-      logging.debug("Checking the cache for state %s." % state)
-      return self.cache.get_outcome(state)
+      logging.debug("Checking the transposition table for state %s." % state)
+      return self.transposition_table.get_outcome(state)
 
-  def save_cached_value(self, outcome_value):
-    if self.moves_so_far <= self.max_cache_move:
+  def save_transposition_value(self, outcome_value):
+    if self.moves_so_far <= self.max_transposition_table_move:
       outcome = Outcome(outcome_value, self.moves_so_far)
-      self.save_cached_outcome(outcome)
+      self.save_transposition_outcome(outcome)
 
-  def cache_value_and_return(self, outcome_value):
-    self.save_cached_value(outcome_value)
-    return Outcome(outcome_value, self.moves_so_far)
-
-  def save_cached_outcome(self, outcome):
-    if self.moves_so_far <= self.max_cache_move:
-      logging.debug("Saving outcome %s for %s because %d is totally <= %d" % (outcome, self.unique_id(), self.moves_so_far, self.max_cache_move))
-      self.cache.save_outcome(self.unique_id(), outcome.value, outcome.depth,
+  def save_transposition_outcome(self, outcome):
+    if self.moves_so_far <= self.max_transposition_table_move:
+      logging.debug("Saving outcome %s for %s because %d is totally <= %d" % (outcome, self.unique_id(), self.moves_so_far, self.max_transposition_table_move))
+      self.transposition_table.save_outcome(self.unique_id(), outcome.value, outcome.depth,
                               outcome.heuristic)
-
-  def uncache_this_outcome(self):
-    self.cache.delete_outcome(self.unique_id())
-
-  def cache_outcome_and_return(self, outcome):
-    logging.debug("We are caching and returning %s." % outcome)
-    self.save_cached_outcome(outcome)
-    return outcome
 
   def unique_id_for_move(self, move):
     new_board = self.new_board_from_move(move)
@@ -163,14 +151,14 @@ class NegamarkBoard(object):
     return new_board
 
   def first_pass(self):
-    cached_outcome = self.get_cached_outcome()
-    if cached_outcome:
-      logging.debug("The cache says %s which saves us from recursing down %d "
-                    "levels." %  (str(cached_outcome),
-                                  cached_outcome.depth - self.moves_so_far))
-      return cached_outcome
+    transposition_outcome = self.get_transposition_outcome()
+    if transposition_outcome:
+      logging.debug("The transposition table says %s which saves us from recursing down %d "
+                    "levels." %  (str(transposition_outcome),
+                                  transposition_outcome.depth - self.moves_so_far))
+      return transposition_outcome
     else:
-      logging.debug("The cache didn't have it.")
+      logging.debug("The transposition table didn't have it.")
     heuristic = self.heuristic()
     if heuristic >= 1000:
       logging.debug("I think %s just won after the other player's turn. That "
@@ -207,7 +195,7 @@ class NegamarkBoard(object):
     num_legal_moves = len(legal_moves)
     if num_legal_moves == 0:
       stalemate = Outcome(Outcome.STALEMATE, self.moves_so_far)
-      self.save_cached_outcome(stalemate)
+      self.save_transposition_outcome(stalemate)
       return stalemate
     best_move = NegamarkMove()
     best_move.outcome = Outcome(Outcome.LOSS, 0) # no move is this bad
@@ -260,7 +248,7 @@ class NegamarkBoard(object):
                                              deadline=deadline,
                                              alpha=beta.opposite(),
                                              beta=alpha.opposite())
-        child_board.save_cached_outcome(child_outcome)
+        child_board.save_transposition_outcome(child_outcome)
         child_outcome_for_us = child_outcome.opposite()
       if datetime.datetime.now() > logging_deadline:
         selective_log = logging.info
@@ -271,7 +259,7 @@ class NegamarkBoard(object):
       move.outcome = child_outcome_for_us
       if child_outcome_for_us.value == Outcome.WIN:
         logging.debug("This is a win. We could wait for a better win but why?")
-        self.save_cached_outcome(child_outcome_for_us)
+        self.save_transposition_outcome(child_outcome_for_us)
         if need_a_decision:
           return move
         else:
@@ -283,7 +271,7 @@ class NegamarkBoard(object):
                       "means!" % (str(alpha), str(beta)))
         break
       child_node_index += 1
-    self.save_cached_outcome(best_move.outcome)
+    self.save_transposition_outcome(best_move.outcome)
     if need_a_decision:
       return best_move
     else:
@@ -326,12 +314,12 @@ class NegamarkBoard(object):
              'move %d.'% (decision.outcome.heuristic, decision.outcome.depth))
     return decision
 
-  def flush_cache(self):
-    logging.info("Flushing the cache.")
-    self.cache.flush()
+  def flush_transposition_table(self):
+    logging.info("Flushing the transposition table.")
+    self.transposition_table.flush()
 
   def play_game(self):
-    atexit.register(self.flush_cache)
+    atexit.register(self.flush_transposition_table)
     while (len(self.all_legal_moves()) > 0 and
            self.winner() == NegamarkBoard.NO_WINNER):
       print "This is move %d" % (self.moves_so_far + 1)
@@ -352,7 +340,7 @@ class NegamarkBoard(object):
        print "It looks like a stalemate."
     else:
        print "I have no idea why the game ended."
-    self.flush_cache()
+    self.flush_transposition_table()
 
   def verify_subclass(self):
     missing_methods = []

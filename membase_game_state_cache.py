@@ -3,18 +3,18 @@ import logging
 
 import memcache
 import time
-from negamark import AbstractGameStateCache, Outcome
+from negamark import AbstractTranspositionTable, Outcome
 
-class MembaseGameStateCache(AbstractGameStateCache):
+class MembaseTranspositionTable(AbstractTranspositionTable):
 
   def __init__(self, database_uri):
     self.database_uri = database_uri
     self.membase = memcache.Client([self.database_uri], debug=True)
 
   def get_outcome(self, state):
-    cached_state = self.membase.get(str(state))
-    if cached_state:
-      fields = cached_state.split(',')
+    transposition = self.membase.get(str(state))
+    if transposition:
+      fields = transposition.split(',')
       if len(fields) == 3:
         heuristic = int(fields[2])
       else:

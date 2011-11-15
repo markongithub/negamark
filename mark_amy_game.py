@@ -4,12 +4,12 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 from negamark import NegamarkBoard
 from product_game import ProductGameBoard, ProductGameMove
-from storm_mysql_game_state_cache import StormMySQLGameStateCache
+from storm_mysql_transposition_table import StormMySQLTranspositionTable
 
 def main():
 
   mark_amy = ProductGameBoard(
-      StormMySQLGameStateCache('mysql://productgame@localhost/productgame'))
+      StormMySQLTranspositionTable('mysql://productgame@localhost/productgame'))
   mark_amy.make_move(ProductGameMove(6, 3)) #A
 #  mark_amy.make_move(ProductGameMove(7, 3)) 
 #  mark_amy.make_move(ProductGameMove(7, 4)) 

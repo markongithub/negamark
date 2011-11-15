@@ -3,7 +3,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 from copy import deepcopy
 from negamark import NegamarkBoard, NegamarkMove
-from storm_game_state_cache import StormGameStateCache
+from storm_transposition_table import StormTranspositionTable
 
 class TicTacToeMove(NegamarkMove):
 
@@ -20,8 +20,8 @@ class TicTacToeBoard(NegamarkBoard):
                  (1, 4, 7), (2, 4, 6), (2, 5, 8),
                  (3, 4, 5), (6, 7, 8))
 
-  def __init__(self, cache):
-    super(TicTacToeBoard,self).__init__(cache)
+  def __init__(self, transposition_table):
+    super(TicTacToeBoard,self).__init__(transposition_table)
     self.squares = []
     for i in range(0,9):
       self.squares.append(NegamarkBoard.OPEN)
@@ -78,7 +78,7 @@ class TicTacToeBoard(NegamarkBoard):
     self.moves_so_far += 1
 
   def copy_board(self):
-    new_board = TicTacToeBoard(self.cache)
+    new_board = TicTacToeBoard(self.transposition_table)
     new_board.squares = deepcopy(self.squares)
     return new_board
 
@@ -91,7 +91,7 @@ class TicTacToeBoard(NegamarkBoard):
 
 def main():
 
-  board = TicTacToeBoard(StormGameStateCache('sqlite:tic_tac_toe_storm.db'))
+  board = TicTacToeBoard(StormTranspositionTable('sqlite:tic_tac_toe_storm.db'))
   board.is_automated[NegamarkBoard.X] = False
   board.is_automated[NegamarkBoard.O] = True
   board.play_game()

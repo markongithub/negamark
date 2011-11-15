@@ -1,19 +1,19 @@
 from sqlalchemy import *
 from sqlalchemy.orm import mapper, sessionmaker
 
-class SQLAlchemyGameStateCache(GameStateCache):
+class SQLAlchemyTranspositionTable(TranspositionTable):
   def __init__(self, database_url):
     engine = create_engine('sqlite:///negamark.db')
     print "Setting up database engine..."
     engine = create_engine(database_url)
     print "Setting up metadata..."
     metadata = MetaData(engine)
-    self.cached_states = Table('cached_states', metadata,
+    self.transpositions = Table('transpositions', metadata,
                                Column('state', BigInteger, primary_key=True),
                                Column('value', Integer, nullable=False),
                                Column('heuristic', Integer),
                                Column('depth', Integer, nullable=False),)
-    mapper(CachedState, self.cached_states)
+    mapper(Transposition, self.transpositions)
     print "Creating tables if necessary..."
     metadata.create_all(engine)
     print "Setting up sessionmaker..."
@@ -21,22 +21,22 @@ class SQLAlchemyGameStateCache(GameStateCache):
     print "Setting up session..."
     self.session = Session()
     print ("We've cached %d states. Cool!"
-           % self.session.query(CachedState).count())
+           % self.session.query(Transposition).count())
 
   def get_outcome(self, state):
-    cached_state = self.session.query(
-        CachedState).filter_by(state=state).first()
-    if cached_state:
-      return Outcome(cached_state.value, cached_state.depth)
+    transposition = self.session.query(
+        Transposition).filter_by(state=state).first()
+    if transposition:
+      return Outcome(transposition.value, transposition.depth)
     else:
       return None
 
   def save_outcome(self, state, value, depth):
-    cached_state = CachedState(state, value, depth)
-    self.session.merge(cached_state)
+    transposition = Transposition(state, value, depth)
+    self.session.merge(transposition)
 
   def delete_outcome(self, state):
-    to_purge = self.session.query(CachedState).filter_by(state=state).first()
+    to_purge = self.session.query(Transposition).filter_by(state=state).first()
     self.session.delete(to_purge)
 
   def flush(self):

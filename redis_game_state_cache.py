@@ -2,17 +2,17 @@ import logging
 #logging.basicConfig(level=logging.DEBUG)
 
 import redis
-from negamark import AbstractGameStateCache, Outcome
+from negamark import AbstractTranspositionTable, Outcome
 
-class RedisGameStateCache(AbstractGameStateCache):
+class RedisTranspositionTable(AbstractTranspositionTable):
 
   def __init__(self, database_uri):
     self.redis = redis.Redis(database_uri)
 
   def get_outcome(self, state):
-    cached_state = self.redis.get(state)
-    if cached_state:
-      fields = cached_state.split(',')
+    transposition = self.redis.get(state)
+    if transposition:
+      fields = transposition.split(',')
       if len(fields) == 3:
         heuristic = int(fields[2])
       else:

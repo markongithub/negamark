@@ -2,17 +2,17 @@ import logging
 FORMAT = '%(asctime)-15s %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 import math
-from negamark import AbstractGameStateCache, NegamarkBoard, NegamarkMove
+from negamark import AbstractTranspositionTable, NegamarkBoard, NegamarkMove, Outcome
 import numpy
-from storm_mysql_game_state_cache import StormMySQLGameStateCache
+from storm_mysql_transposition_table import StormMySQLTranspositionTable
 
 class ConnectFourBoard(NegamarkBoard):
 
   zobrist_nightmare = [7281302469423965948L, 11535137346879502140L, 16183058612673694751L, 10026502909839539198L, 2685075969092475931L, 13861215701798137759L, 16385698875654065536L, 822402904205995935L, 10617863152316893861L, 9327665059135154791L, 9120278488375106431L, 3273899307632190887L, 9469685473969652685L, 14069551448994504522L, 5503906241272452551L, 34167834375172777L, 7707234374558629707L, 6921982504939763693L, 10121285955116518457L, 8614577338908492826L, 2432954357549595199L, 7337707938651594288L, 9686374984529235051L, 3089354579533464243L, 5288794958712795763L, 3741839444804713005L, 3251924229072910609L, 6468084355474251133L, 1494510373968177940L, 15375581573269581385L, 6036395739993305979L, 16342183033159371326L, 8891259814109958577L, 11292829739724204624L, 4652171659706614497L, 734954815928583474L, 11808353800905123186L, 2052372241906140641L, 17261096264227414711L, 6142294369383520649L, 4551635071923340435L, 14531285652768634165L, 9429718624479070466L, 3945163968715979872L, 11012145987451389101L, 18128858372206286635L, 8030539348243423809L, 2527841533572567689L, 7666894609277990818L, 15051228724891796198L, 2306731562933026332L, 10630630353488155458L, 15612491633652122958L, 1412899886805961461L, 10935741207607989953L, 1388098205762229958L, 11866411547156727031L, 10564428861999339967L, 6436031515915822608L, 4604373099848445622L, 15978590928576709420L, 4303477751528313923L, 7094134810380433600L, 4209626953647004124L, 3037619575803077483L, 1361325463188045972L, 9413618834317830314L, 10799671478555630594L, 17302043050429613702L, 17392497261167013188L, 8867727171082354371L, 27555881416417709L, 12257215606299596096L, 4505089339051152112L, 11379693309448576075L, 14282639998440780704L, 12082683875741469230L, 3784581016600920472L, 551266601615037502L, 15473035378804042355L, 1513877138935422923L, 6633926970702675840L, 13356486780785402881L, 15201438103161614664L]
 
-  def __init__(self, cache, squares=None,
+  def __init__(self, transposition_table, squares=None,
                win_scores=None, simple_scores=None, potential_win_matrix=None):
-    super(ConnectFourBoard,self).__init__(cache)
+    super(ConnectFourBoard,self).__init__(transposition_table)
     self.rows = 6
     self.columns = 7
     if squares is not None:
@@ -32,7 +32,7 @@ class ConnectFourBoard(NegamarkBoard):
     else:
       self.potential_win_matrix = self.generate_potential_win_matrix()
     self.zobrist = 0L
-    self.max_cache_move = 39
+    self.max_transposition_table_move = 39
 
   def initial_scores(self):
     return numpy.ones((2, self.num_potential_wins()), int)
@@ -237,7 +237,7 @@ class ConnectFourBoard(NegamarkBoard):
     copied_simple_scores = self.simple_scores[:]
     # We don't copy potential_win_matrix. It never changes so all objects can
     # share it.
-    new_board = ConnectFourBoard(squares=copied_squares, cache=self.cache,
+    new_board = ConnectFourBoard(squares=copied_squares, transposition_table=self.transposition_table,
                                  win_scores = copied_win_scores,
                                  simple_scores = copied_simple_scores,
                                  potential_win_matrix=self.potential_win_matrix)
@@ -245,11 +245,11 @@ class ConnectFourBoard(NegamarkBoard):
     return new_board
 
   def unique_id(self):
-#    if self.moves_so_far > self.max_cache_move:
+#    if self.moves_so_far > self.max_transposition_table_move:
 #      return 0
-#    logging.debug("Getting the unique_id for %s because %d is totally not greater than %d" % (str(self.history), self.moves_so_far, self.max_cache_move))
+#    logging.debug("Getting the unique_id for %s because %d is totally not greater than %d" % (str(self.history), self.moves_so_far, self.max_transposition_table_move))
 #    total = 0
-#    exponent = self.max_cache_move - 1
+#    exponent = self.max_transposition_table_move - 1
 #    for move_column in self.history:
 #      total += move_column * (7 ** exponent)
 #      exponent -= 1
@@ -283,16 +283,20 @@ class ConnectFourMove(NegamarkMove):
 
 def main():
 
-  board = ConnectFourBoard(StormMySQLGameStateCache(
-      'mysql://connect_four@localhost/connect_four'))
+  board = ConnectFourBoard(
+      StormMySQLTranspositionTable('mysql://connect_four@localhost/connect_four'))
+#      AbstractTranspositionTable())
 #  board.make_move(ConnectFourMove(4))
 #  for move in [3, 2, 2, 1, 2, 0, 3, 4]:
-  for move in [3, 2, 2, 1, 2, 0]:
+  for move in [3, 2, 2, 1, 2]:
     board.make_move(ConnectFourMove(move))
-  board.is_automated[NegamarkBoard.X] = True
-  board.is_automated[NegamarkBoard.O] = False
+  board.is_automated[NegamarkBoard.X] = False
+  board.is_automated[NegamarkBoard.O] = True
   board.ai_deadline = 60*60*24*7
-  board.minimum_search_move = 1
+  board.minimum_search_move = 2
+  board.max_transposition_table_move = 12
+  board.initial_alpha = Outcome(Outcome.WIN, 43)
+  board.initial_beta = Outcome(Outcome.WIN, 0)
 
   board.play_game()
 #  board.choose_ai_move()

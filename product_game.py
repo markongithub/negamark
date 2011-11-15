@@ -19,9 +19,9 @@ class ProductGameBoard(NegamarkBoard):
       36: (4, 0), 40: (4, 1), 42: (4, 2), 45: (4, 3), 48: (4, 4), 49: (4, 5),
       54: (5, 0), 56: (5, 1), 63: (5, 2), 64: (5, 3), 72: (5, 4), 81: (5, 5)}
 
-  def __init__(self, cache, squares=None,
+  def __init__(self, transposition_table, squares=None,
                win_scores=None, simple_scores=None, potential_win_matrix=None):
-    super(ProductGameBoard,self).__init__(cache)
+    super(ProductGameBoard,self).__init__(transposition_table)
     self.rows = 6
     self.columns = 6
     if squares is not None:
@@ -44,7 +44,7 @@ class ProductGameBoard(NegamarkBoard):
     self.bottomFactor = 0
     self.unique_id_faster = 0L
     self.minimum_search_move = 7
-    self.max_cache_move = 32
+    self.max_transposition_table_move = 32
 
   def initial_scores(self):
     return numpy.ones((2, self.num_potential_wins()), int)
@@ -280,7 +280,7 @@ class ProductGameBoard(NegamarkBoard):
     copied_simple_scores = self.simple_scores[:]
     # We don't copy potential_win_matrix. It never changes so all objects can
     # share it.
-    new_board = ProductGameBoard(squares=copied_squares, cache=self.cache,
+    new_board = ProductGameBoard(squares=copied_squares, transposition_table=self.transposition_table,
                                  win_scores = copied_win_scores,
                                  simple_scores = copied_simple_scores,
                                  potential_win_matrix=self.potential_win_matrix)
@@ -288,7 +288,7 @@ class ProductGameBoard(NegamarkBoard):
     new_board.bottomFactor = self.bottomFactor
     new_board.unique_id_faster = self.unique_id_faster
     new_board.moves_so_far = self.moves_so_far
-    new_board.max_cache_move = self.max_cache_move
+    new_board.max_transposition_table_move = self.max_transposition_table_move
     return new_board
 
   def squares_as_string(self):
@@ -325,7 +325,7 @@ class ProductGameMove(NegamarkMove):
 
 def main():
 
-  board = ProductGameBoard(StormMySQLGameStateCache(
+  board = ProductGameBoard(StormMySQLTranspositionTable(
       'mysql://productgame@localhost/productgame'))
   board.is_automated[NegamarkBoard.X] = True
   board.is_automated[NegamarkBoard.O] = False

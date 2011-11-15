@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from negamark import AbstractGameStateCache, NegamarkBoard, Outcome
+from negamark import AbstractTranspositionTable, NegamarkBoard, Outcome
 from product_game import ProductGameBoard
 from product_game import ProductGameMove
 import datetime
@@ -12,19 +12,19 @@ import unittest
 class product_game_test(unittest.TestCase):
 
   def test_methods_implemented(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     self.assertTrue(test_board.verify_subclass())
 
   def test_unique_id_int(self):
 
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(3, 6)) #that's i=2 j=2, flat 14
     self.assertEqual((NegamarkBoard.X * 3 ** (4 + 14)) + (9 * 2) + 5,
                      test_board.unique_id_int())
 
   def test_unique_id_int_harder(self):
 
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(3, 6)) #that's i=2 j=2, flat 14
     test_board.make_move(ProductGameMove(6, 6)) #that's i=4 j=0, flat 24
     self.assertEqual((NegamarkBoard.X * 3 ** (4 + 14)) +
@@ -34,7 +34,7 @@ class product_game_test(unittest.TestCase):
     self.assertEqual(test_board.unique_id_int(), test_board.unique_id_faster)
 
   def test_unique_id_faster(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(6, 3))
     test_board.make_move(ProductGameMove(7, 3))
     test_board.make_move(ProductGameMove(7, 4))
@@ -46,7 +46,7 @@ class product_game_test(unittest.TestCase):
     self.assertEqual(test_board.unique_id_int(), test_board.unique_id_faster)
 
   def test_unique_id_copied(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(1, 1))
     self.assertEqual(test_board.unique_id_int(), test_board.unique_id_faster)
     copied_board = test_board.copy_board()
@@ -62,13 +62,13 @@ class product_game_test(unittest.TestCase):
                      1806217383896236484 + 8105110306037952534)
 
   def test_unique_id_negative(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.bottomFactor = 9
     test_board.topFactor = 9
     self.assertEqual(80, test_board.unique_id_int())
 
   def test_unique_id_negative_signflip(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.squares = numpy.array([[0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0],
                                       [0, 2, 2, 1, 1, 0], [0, 0, 2, 0, 1, 0],
                                       [0, 2, 0, 2, 2, 0], [0, 0, 0, 1, 1, 2]])
@@ -78,7 +78,7 @@ class product_game_test(unittest.TestCase):
 
   def test_heuristic(self):
 
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(3, 6))
     test_board.make_move(ProductGameMove(3, 3))
     test_board.make_move(ProductGameMove(3, 9))
@@ -89,7 +89,7 @@ class product_game_test(unittest.TestCase):
     self.assertEqual(-2000, test_board.heuristic())
 
   def test_four_square_value(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     self.assertEqual(
         5, test_board.fourSquareValue([NegamarkBoard.OPEN, NegamarkBoard.X,
                                        NegamarkBoard.X, NegamarkBoard.OPEN]))
@@ -99,11 +99,11 @@ class product_game_test(unittest.TestCase):
                                     NegamarkBoard.O, NegamarkBoard.O]))
 
   def test_all_legal_moves_start(self):
-    board = ProductGameBoard(AbstractGameStateCache())
+    board = ProductGameBoard(AbstractTranspositionTable())
     self.assertEqual(sum(range(1,10)), len(board.all_legal_moves()))
 
   def test_all_legal_moves(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(1, 3))
     test_board.make_move(ProductGameMove(1, 4))
     test_board.make_move(ProductGameMove(1, 5))
@@ -132,7 +132,7 @@ class product_game_test(unittest.TestCase):
 #                     sorted(all_moves)[0])
 
   def test_endgame(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
     test_board.make_move(ProductGameMove(3, 6))
     test_board.make_move(ProductGameMove(3, 3))
     test_board.make_move(ProductGameMove(3, 9))
@@ -150,7 +150,7 @@ class product_game_test(unittest.TestCase):
     self.assertEqual(outcome_from_two.value, Outcome.LOSS)
 
   def test_another_scenario(self):
-    test_board = ProductGameBoard(AbstractGameStateCache())
+    test_board = ProductGameBoard(AbstractTranspositionTable())
 
     test_board.make_move(ProductGameMove(6, 3)) #A
     test_board.make_move(ProductGameMove(7, 3))
