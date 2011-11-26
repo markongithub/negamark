@@ -2,6 +2,7 @@
 
 module Negamark where
   import Array
+  import Debug.Trace
   import IO
 
   data OutcomeValue = Loss | Stalemate | Heuristic | Win
@@ -33,83 +34,83 @@ module Negamark where
         | v1 == Heuristic = compare h1 h2
         | otherwise       = compare d1 d2
 
-    
   data SquareState = X | O | SquareOpen
                      deriving (Eq, Show)
   otherPlayer X = O
   otherPlayer O = X
 
-  type TicTacToeMove = Int 
+  endingDescription :: SquareState -> [Char]
+  endingDescription SquareOpen = "We'll call it a draw."
+  endingDescription player = (show player ++ " is the winner.")
+  
+  class NegamarkGameState gameState where
+    activePlayer :: gameState -> SquareState
+    movesSoFar :: gameState -> Int
+    heuristicValue :: gameState -> Int
+    findWinner :: gameState -> SquareState
+    allLegalMoves :: gameState -> [gameState]
+    getHumanMove :: gameState -> IO gameState
+    showBoard :: gameState -> [Char]
 
-  data TicTacToeBoardState = TicTacToeBoardState
-      { squares      :: (Array Integer SquareState)
-      , activePlayer :: SquareState
-      , movesSoFar   :: Int
-      } deriving (Show)
-
-  squareState board i = (squares board)!i
-  squareAvailable board i = squareState board i == SquareOpen
-  availableMoves board = filter (squareAvailable board) [0..8]
-  newTicTacToeBoard =
-      TicTacToeBoardState (array (0,8) [(i, SquareOpen) | i <- [0..8]]) X 0
-  waysToWin = [(0, 1, 2), (0, 3, 6), (0, 4, 8), (1, 4, 7), (2, 4, 6),
-               (2, 5, 8), (3, 4, 5), (6, 7, 8)]
-  valueFromSquares board (i1, i2, i3) = let square = squares board
-      in if square!i1 == square!i2 && square!i1 == square!i3 then square!i1
-         else SquareOpen
-  findWinner ::
-      TicTacToeBoardState -> [(Integer, Integer, Integer)] -> SquareState
-  findWinner board [] = SquareOpen
-  findWinner board (x:xs) = if (valueFromSquares board x) /= SquareOpen
-                               then valueFromSquares board x
-                               else findWinner board xs
-  newTicTacToeStateFromMove ::
-      Integer -> TicTacToeBoardState -> TicTacToeBoardState
-  newTicTacToeStateFromMove move board =
-      TicTacToeBoardState ((squares board) // [(move, activePlayer board)])
-                          (otherPlayer(activePlayer board))
-                          ((movesSoFar board) + 1)
-  children board = 
-      map (\m -> newTicTacToeStateFromMove m board) (availableMoves board)
-
-  firstPass board | findWinner board waysToWin == activePlayer board =
+  firstPass :: NegamarkGameState a => a -> Outcome
+  firstPass board | findWinner board == activePlayer board =
       Outcome Win (movesSoFar board) 1
-  firstPass board | findWinner board waysToWin == 
-                    otherPlayer (activePlayer board) = 
+  firstPass board | findWinner board == otherPlayer (activePlayer board) = 
       Outcome Loss (movesSoFar board) 0
-  firstPass board | length (availableMoves board) == 0 =
+  firstPass board | length (allLegalMoves board) == 0 =
       Outcome Stalemate (movesSoFar board) 0
-  firstPass board | otherwise = Outcome Heuristic (movesSoFar board) 0
+  firstPass board | otherwise =
+      Outcome Heuristic (movesSoFar board) (heuristicValue board)
 
-  negamark :: TicTacToeBoardState -> Int -> Outcome -> Outcome -> Outcome
-  negamark board 0 _ _ = firstPass board
-  negamark board depth _ _ | value(firstPass board) /= Heuristic = firstPass board
+  negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
+               (Outcome, [a])
+--  negamark board depth alpha beta | trace ("nm d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " x " ++ showBoard board) False = undefined
+  negamark board 0     alpha beta = (firstPass board, [board])
+  negamark board depth alpha beta | value(firstPass board) /= Heuristic =
+      (firstPass board, [board])
   negamark board depth alpha beta | otherwise =
---      opposite (minimum (map (\b -> negamark b (depth -1)) (children board)))
---      opposite (minChildOutcome (depth - 1) (children board))
---      negamarkRecurse (depth - 1) (Outcome Loss 0 0) (Outcome Win 0 0) (children board)
-      negamarkRecurse (depth - 1) alpha beta board (availableMoves board)
+      (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
+      where recursiveOutcome =
+                   negamarkRecurse (depth - 1) (opposite beta) (opposite alpha) (allLegalMoves board)
 
-  negamarkRecurse :: Int -> Outcome -> Outcome -> TicTacToeBoardState ->
-                     [Integer] -> Outcome
-  negamarkRecurse depth alpha beta board [] = Outcome Loss 0 0 -- SO WRONG
-  negamarkRecurse depth alpha beta board (x:xs) =
-      let thisChild = opposite (negamark (newTicTacToeStateFromMove x board) depth (opposite beta) (opposite alpha))
-      in if thisChild >= beta then thisChild
-      else maximum [thisChild, negamarkRecurse depth (maximum[thisChild, alpha]) beta board xs]
+  negamarkRecurse :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] ->
+       (Outcome, [a])
+  negamarkRecurse depth alpha beta [] = error "maximum of empty list"
+  negamarkRecurse depth alpha beta (x:xs)
+ --     | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " with " ++ show (length xs) ++ " more after x " ++ showBoard x) False = undefined
+      | (alpha > beta) && (value alpha /= Stalemate) = error "alpha > beta"
+      | length xs == 0                    = xOutcome
+--      | trace "We have items to go but we might prune now." False = undefined
+      | newAlpha >= beta                  = xOutcome
+--      | trace "We did not prune. Now we may return xOutcome." False = undefined
+      | fst(xOutcome) <= fst tailResult    = xOutcome
+--      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show newAlpha ++ " x " ++ showBoard x ++ " returning tailResult because " ++ show (fst tailResult) ++ " is worse for the other guy than is " ++ show (fst xOutcome)) False = undefined
+      | otherwise                         = tailResult
+      where xOutcome =
+             (negamark x depth alpha beta)
+            tailResult =
+             (negamarkRecurse depth newAlpha beta xs)
+            newAlpha = max alpha (opposite (fst xOutcome))
 
-  getHumanTicTacToeMove board = do
-    putStrLn (show board)
-    putStrLn "Make your move. If it's invalid in any way we will crash."
-    number <- getLine
-    return (read number :: Integer)
+  negamarkSimple :: NegamarkGameState a => a -> Int -> (Outcome, [a])
+  negamarkSimple board depth =
+      negamark board depth (Outcome Loss 0 0) (Outcome Win 0 0)
 
-  playGame board = do
-    if length (availableMoves board) > 0
-       then do nextMove <- getHumanTicTacToeMove board
-               playGame (newTicTacToeStateFromMove nextMove board)
-       else return True
+  pickMove :: NegamarkGameState a => a -> Int -> (Outcome, [a])
+  pickMove board depth = result
+      where result = (negamarkRecurse depth (Outcome Loss 0 0)
+                      (Outcome Win 0 0) (allLegalMoves board))
 
-  startGame = do
-    playGame newTicTacToeBoard
-
+  playGame :: NegamarkGameState a => a -> IO SquareState
+  playGame board | length (allLegalMoves board) == 0 = do {return SquareOpen}
+                 | findWinner board /= SquareOpen    = do
+                       return (findWinner board)
+                 | activePlayer board == X           = do
+                       let result = pickMove board 9
+                       putStrLn ("The best you can do is " ++ show (fst result))
+                       ending <- playGame (head (snd result))
+                       return ending
+                 | otherwise = do
+                       nextMove <- getHumanMove board
+                       ending <- playGame nextMove
+                       return ending 
