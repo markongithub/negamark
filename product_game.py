@@ -289,6 +289,7 @@ class ProductGameBoard(NegamarkBoard):
     new_board.unique_id_faster = self.unique_id_faster
     new_board.moves_so_far = self.moves_so_far
     new_board.max_transposition_table_move = self.max_transposition_table_move
+    new_board.minimum_info_interval = self.minimum_info_interval
     return new_board
 
   def squares_as_string(self):
@@ -325,8 +326,9 @@ class ProductGameMove(NegamarkMove):
 
 def main():
 
-  board = ProductGameBoard(StormMySQLTranspositionTable(
-      'mysql://productgame@localhost/productgame'))
+  board = ProductGameBoard(
+#      StormMySQLTranspositionTable('mysql://productgame@localhost/productgame'))
+      RedisTranspositionTable('localhost'))
   board.is_automated[NegamarkBoard.X] = True
   board.is_automated[NegamarkBoard.O] = False
   board.ai_deadline = 60
