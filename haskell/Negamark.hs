@@ -2,6 +2,7 @@
 
 module Negamark where
   import Array
+  import Data.List
   import Debug.Trace
   import IO
 
@@ -50,7 +51,7 @@ module Negamark where
     findWinner :: gameState -> SquareState
     allLegalMoves :: gameState -> [gameState]
     getHumanMove :: gameState -> IO gameState
-    showBoard :: gameState -> [Char]
+    summary :: gameState -> [Char]
 
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
@@ -64,27 +65,34 @@ module Negamark where
 
   negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
                (Outcome, [a])
---  negamark board depth alpha beta | trace ("nm d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " x " ++ showBoard board) False = undefined
+  negamark board depth alpha beta | traceNegamark board depth alpha beta False = undefined
   negamark board 0     alpha beta = (firstPass board, [board])
   negamark board depth alpha beta | value(firstPass board) /= Heuristic =
       (firstPass board, [board])
   negamark board depth alpha beta | otherwise =
       (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
       where recursiveOutcome =
-                   negamarkRecurse (depth - 1) (opposite beta) (opposite alpha) (allLegalMoves board)
+                   negamarkRecurse (depth - 1) (opposite beta) (opposite alpha) (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
+
+  traceNegamark board depth alpha beta foo
+      | depth < 99  = foo
+      | otherwise  = trace ("nm  d " ++ show depth ++ " " ++ summary board ++ 
+                            " a " ++  show alpha ++ " b " ++ show beta) foo
 
   negamarkRecurse :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] ->
        (Outcome, [a])
   negamarkRecurse depth alpha beta [] = error "maximum of empty list"
   negamarkRecurse depth alpha beta (x:xs)
- --     | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " with " ++ show (length xs) ++ " more after x " ++ showBoard x) False = undefined
-      | (alpha > beta) && (value alpha /= Stalemate) = error "alpha > beta"
+--     | trace ("nmr d " ++ show depth ++ " " ++ summary x ++ " a " ++ show alpha ++ " b " ++ show beta ++ " with " ++ show (length xs) ++ " more to go") False = undefined
+--      | (alpha > beta) && (value alpha /= Stalemate) &&
+--        (value beta /= Stalemate)         = error ("alpha " ++ show alpha ++ " > beta " ++ show beta)
       | length xs == 0                    = xOutcome
---      | trace "We have items to go but we might prune now." False = undefined
+--      | trace (summary x ++ " could achieve " ++ show (opposite (fst xOutcome)) ++ " and beta is " ++ show beta ++ " - should we prune?") False = undefined
       | newAlpha >= beta                  = xOutcome
 --      | trace "We did not prune. Now we may return xOutcome." False = undefined
-      | fst(xOutcome) <= fst tailResult    = xOutcome
---      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show newAlpha ++ " x " ++ showBoard x ++ " returning tailResult because " ++ show (fst tailResult) ++ " is worse for the other guy than is " ++ show (fst xOutcome)) False = undefined
+--      | value (opposite(fst xOutcome)) == Win    = xOutcome
+      | opposite(fst xOutcome) >= opposite(fst tailResult)    = xOutcome
+--      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show newAlpha ++ " x " ++ show x ++ " returning tailResult because " ++ show (fst tailResult) ++ " is worse for the other guy than is " ++ show (fst xOutcome)) False = undefined
       | otherwise                         = tailResult
       where xOutcome =
              (negamark x depth alpha beta)
@@ -106,11 +114,12 @@ module Negamark where
                  | findWinner board /= SquareOpen    = do
                        return (findWinner board)
                  | activePlayer board == X           = do
-                       let result = pickMove board 9
+                       let result = pickMove board 5
                        putStrLn ("The best you can do is " ++ show (fst result))
                        ending <- playGame (head (snd result))
                        return ending
                  | otherwise = do
                        nextMove <- getHumanMove board
                        ending <- playGame nextMove
-                       return ending 
+                       return ending
+
