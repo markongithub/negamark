@@ -72,7 +72,7 @@ module Negamark where
   negamark board depth alpha beta | otherwise =
       (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
       where recursiveOutcome =
-                   negamarkRecurse (depth - 1) (opposite beta) (opposite alpha) (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
+                   negamarkRecurse depth alpha beta (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
 
   traceNegamark board depth alpha beta foo
       | depth < 99  = foo
@@ -95,7 +95,7 @@ module Negamark where
 --      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show newAlpha ++ " x " ++ show x ++ " returning tailResult because " ++ show (fst tailResult) ++ " is worse for the other guy than is " ++ show (fst xOutcome)) False = undefined
       | otherwise                         = tailResult
       where xOutcome =
-             (negamark x depth alpha beta)
+             (negamark x (depth - 1) (opposite beta) (opposite alpha))
             tailResult =
              (negamarkRecurse depth newAlpha beta xs)
             newAlpha = max alpha (opposite (fst xOutcome))
