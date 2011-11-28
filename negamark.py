@@ -77,6 +77,12 @@ class Outcome(object):
     else:
       return self
 
+  def authoritative(self, max_move):
+    if self.value == Outcome.TIMEOUT:
+      return self.depth >= max_move
+    else:
+      return True
+        
 
 class NegamarkMove(object):
 
@@ -173,9 +179,11 @@ class NegamarkBoard(object):
       return Outcome(Outcome.STALEMATE, self.moves_so_far)
     return Outcome(Outcome.TIMEOUT, self.moves_so_far, heuristic)
 
-  def should_reconsider_move(self, move):
-    return (move.outcome.value == Outcome.TIMEOUT or
-            move.outcome.value == Outcome.WIN)
+  def should_reconsider_move(self, move, expected_depth):
+    return (move.outcome.value == Outcome.WIN or
+            move.outcome.value == Outcome.STALEMATE or
+            (move.outcome.value == Outcome.TIMEOUT and
+             move.outcome.depth < expected_depth))
 
   def negamark(self, current_depth, path, max_depth, deadline, alpha, beta):
     if current_depth <= 1:
@@ -212,7 +220,21 @@ class NegamarkBoard(object):
     if datetime.datetime.now() > deadline and not need_a_decision:
       logging.debug("We are past our deadline. Timeout.")
       return max(legal_moves).outcome
-    pruned_moves = filter (self.should_reconsider_move, legal_moves)
+    #Okay say it's t12. And our current_depth is 3. And our max depth is
+    #6. And our moves_so_far is 8. Then on this turn we expect to descend
+    #to moves_so_far = 8 - 3 + 6 = 11.
+    expected_depth = self.moves_so_far - current_depth + max_depth
+    for move in sorted(legal_moves, reverse=True):
+      if move.outcome.authoritative(expected_depth) and move.outcome >= beta:
+        logging.debug("%s is authoritative and as good as %s so we can prune." %
+                      (move.outcome, beta))
+        if need_a_decision:
+          return move
+        else: #OH GOD REFACTOR THIS
+          return move.outcome
+    pruned_moves = filter(
+        lambda move: self.should_reconsider_move(move, expected_depth),
+        legal_moves)
     num_pruned_moves = len(pruned_moves)
     child_node_index = 1 + num_legal_moves - num_pruned_moves
     for move in sorted(pruned_moves, reverse=True):
@@ -226,10 +248,6 @@ class NegamarkBoard(object):
       child_outcome_for_us = None
       first_pass_outcome = move.outcome
       if first_pass_outcome.value == Outcome.TIMEOUT:
-        #Okay say it's t12. And our current_depth is 3. And our max depth is
-        #6. And our moves_so_far is 8. Then on this turn we expect to descend
-        #to moves_so_far = 8 - 3 + 6 = 11.
-        expected_depth = self.moves_so_far - current_depth + max_depth
         if first_pass_outcome.depth < expected_depth:
           logging.debug("I think I can traverse that on this turn because %d "
                         " is less than %d." %
@@ -296,22 +314,24 @@ class NegamarkBoard(object):
                                beta=self.initial_beta)
       max_depth += 2
       if decision.outcome.value == Outcome.WIN:
-        print ('%s is going to win by move %d. It is destiny.' %
-               (self.player_name(self.active_player), decision.outcome.depth))
+        logging.info('%s is going to win by move %d. It is destiny.' %
+                     (self.player_name(self.active_player),
+                      decision.outcome.depth))
         return decision
       if decision.outcome.value == Outcome.LOSS:
-        print ('%s is going to lose by move %d unless %s screws up.' %
-               (self.player_name(self.active_player),
-                decision.outcome.depth,
-                self.player_name(self.other_player(self.active_player))))
+        logging.info('%s is going to lose by move %d unless %s screws up.' %
+                     (self.player_name(self.active_player),
+                      decision.outcome.depth,
+                      self.player_name(self.other_player(self.active_player))))
         return decision
       if decision.outcome.value == Outcome.STALEMATE:
-        print ('The best %s can hope for is a draw.' %
-               (self.player_name(self.active_player)))
+        logging.info('The best %s can hope for is a draw.' %
+                     (self.player_name(self.active_player)))
         return decision
     if decision.outcome.value == Outcome.TIMEOUT:
-      print ('This move is a guess but I think it can get us to heuristic %d by'
-             'move %d.'% (decision.outcome.heuristic, decision.outcome.depth))
+      logging.info('This move is a guess but I think it can get us to ' 
+                   'heuristic %d by move %d.' %
+                   (decision.outcome.heuristic, decision.outcome.depth))
     return decision
 
   def flush_transposition_table(self):
