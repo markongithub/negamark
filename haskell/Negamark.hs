@@ -52,14 +52,17 @@ module Negamark where
     allLegalMoves :: gameState -> [gameState]
     getHumanMove :: gameState -> IO gameState
     summary :: gameState -> [Char]
+    uniqueID :: gameState -> Integer
+--    transpositionTable :: gameState -> TranspositionTable
 
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
       Outcome Win (movesSoFar board) 1
   firstPass board | findWinner board == otherPlayer (activePlayer board) = 
       Outcome Loss (movesSoFar board) 0
-  firstPass board | length (allLegalMoves board) == 0 =
+  firstPass board | null (allLegalMoves board) =
       Outcome Stalemate (movesSoFar board) 0
+--  firstPass board | savedOutcome board /= Nothing = fromJust(savedOutcome board)
   firstPass board | otherwise =
       Outcome Heuristic (movesSoFar board) (heuristicValue board)
 
@@ -122,4 +125,12 @@ module Negamark where
                        nextMove <- getHumanMove board
                        ending <- playGame nextMove
                        return ending
+
+  class TranspositionTable table where
+    getOutcome :: table -> Maybe Outcome
+
+  data NullTranspositionTable = NullTranspositionTable
+
+  instance TranspositionTable NullTranspositionTable where
+    getOutcome nullTable  = Nothing
 
