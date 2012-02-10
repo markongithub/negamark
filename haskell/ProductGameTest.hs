@@ -15,14 +15,16 @@ buggyCase = foldr newProductGameStateFromMove newProductGame (reverse [
 principalVariation = reverse [
     (4,7), (1,7), (3,7), (1,3), (3,6), (1,6), (5,6), (1,5), (1,4), (4,5),
     (2,4), (4,9), (3,9), (3,3), (3,8), (4,8)]
+afterTwoMoves = foldr newProductGameStateFromMove newProductGame (reverse [
+    (1,1), (1,7)])
 
 tests = TestList [
     TestCase (assertEqual "whatever" 19 (depth(Outcome Loss 19 0)))
   , TestCase (assertEqual "whatever" 
               (Outcome Heuristic 19 (-22))
               (opposite (Outcome Heuristic 19 22)))
-  , TestCase (assertEqual "" X (squareState fourSquare 2 1))
-  , TestCase (assertEqual "" SquareOpen (squareState fourSquare 2 2))
+  , TestCase (assertEqual "" X (squareState (squares fourSquare) 2 1))
+  , TestCase (assertEqual "" SquareOpen (squareState (squares fourSquare) 2 2))
   , TestCase (assertEqual "" 45 (length (availableMoves newProductGame)))
   , TestCase (assertEqual "" 8 (length (availableMoves fourSquare)))
   , TestCase (assertEqual "" [(0,0), (0,1), (0,2), (0,3)]
@@ -31,6 +33,20 @@ tests = TestList [
   , TestCase (assertEqual "" X (findWinner xHasWon))
   , TestCase (assertEqual "" (Outcome Loss 7 0)
                           (fst (negamarkSimple xHasWon 0)))
+  , TestCase (assertEqual "" 0  (factorID (1,1)))
+  , TestCase (assertEqual "" 80 (factorID (9,9)))
+  , TestCase (assertEqual "" (2 * 81) -- 81 + 0 + 0
+                          (uniqueID (newProductGameStateFromMove (1,1)
+                                     newProductGame)))
+-- (2 * (3^10)) + (1 * 3 ^ 4) + (1-1) + (7-1)
+  , TestCase (assertEqual "2 9" ((2 * (3^(14+4))) + (9 * (2-1)) + (9-1))
+                          (uniqueID (newProductGameStateFromMove (2,9)
+                                     newProductGame)))
+-- (1 * (3^(20+4)))
+  , TestCase (assertEqual "squareun" 282429536481 (squareUniqueID (3,2) O))
+  , TestCase (assertEqual "" ((2 * (3^(19+4))) + (9 * (3-1)) + (9-1))
+                          (uniqueID (newProductGameStateFromMove (3,9)
+                                     newProductGame)))
     ]
 
 main = runTestTT tests

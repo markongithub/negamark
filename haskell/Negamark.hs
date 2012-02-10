@@ -52,14 +52,17 @@ module Negamark where
     allLegalMoves :: gameState -> [gameState]
     getHumanMove :: gameState -> IO gameState
     summary :: gameState -> [Char]
+    uniqueID :: gameState -> Integer
+--    transpositionTable :: gameState -> TranspositionTable
 
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
       Outcome Win (movesSoFar board) 1
   firstPass board | findWinner board == otherPlayer (activePlayer board) = 
       Outcome Loss (movesSoFar board) 0
-  firstPass board | length (allLegalMoves board) == 0 =
+  firstPass board | null (allLegalMoves board) =
       Outcome Stalemate (movesSoFar board) 0
+--  firstPass board | savedOutcome board /= Nothing = fromJust(savedOutcome board)
   firstPass board | otherwise =
       Outcome Heuristic (movesSoFar board) (heuristicValue board)
 
@@ -72,7 +75,7 @@ module Negamark where
   negamark board depth alpha beta | otherwise =
       (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
       where recursiveOutcome =
-                   negamarkRecurse (depth - 1) (opposite beta) (opposite alpha) (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
+                   negamarkRecurse depth alpha beta (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
 
   traceNegamark board depth alpha beta foo
       | depth < 99  = foo
@@ -95,7 +98,7 @@ module Negamark where
 --      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show newAlpha ++ " x " ++ show x ++ " returning tailResult because " ++ show (fst tailResult) ++ " is worse for the other guy than is " ++ show (fst xOutcome)) False = undefined
       | otherwise                         = tailResult
       where xOutcome =
-             (negamark x depth alpha beta)
+             (negamark x (depth - 1) (opposite beta) (opposite alpha))
             tailResult =
              (negamarkRecurse depth newAlpha beta xs)
             newAlpha = max alpha (opposite (fst xOutcome))
@@ -122,4 +125,12 @@ module Negamark where
                        nextMove <- getHumanMove board
                        ending <- playGame nextMove
                        return ending
+
+  class TranspositionTable table where
+    getOutcome :: table -> Maybe Outcome
+
+  data NullTranspositionTable = NullTranspositionTable
+
+  instance TranspositionTable NullTranspositionTable where
+    getOutcome nullTable  = Nothing
 
