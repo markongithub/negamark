@@ -312,7 +312,7 @@ class NegamarkBoard(object):
                                max_depth=max_depth,
                                alpha=self.initial_alpha,
                                beta=self.initial_beta)
-      max_depth += 2
+      max_depth += 1
       if decision.outcome.value == Outcome.WIN:
         logging.info('%s is going to win by move %d. It is destiny.' %
                      (self.player_name(self.active_player),

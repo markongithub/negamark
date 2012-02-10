@@ -52,3 +52,10 @@ class Transposition(object):
     self.value = value
     self.depth = depth
     self.heuristic = heuristic
+
+def main():
+  table = StormMySQLTranspositionTable('mysql://productgame@localhost/productgame')
+
+if __name__ == '__main__':
+  main()
+
