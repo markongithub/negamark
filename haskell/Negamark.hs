@@ -62,7 +62,6 @@ module Negamark where
       Outcome Loss (movesSoFar board) 0
   firstPass board | null (allLegalMoves board) =
       Outcome Stalemate (movesSoFar board) 0
---  firstPass board | savedOutcome board /= Nothing = fromJust(savedOutcome board)
   firstPass board | otherwise =
       Outcome Heuristic (movesSoFar board) (heuristicValue board)
 
@@ -78,7 +77,7 @@ module Negamark where
                    negamarkRecurse depth alpha beta (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
 
   traceNegamark board depth alpha beta foo
-      | depth < 99  = foo
+      | depth < 16  = foo
       | otherwise  = trace ("nm  d " ++ show depth ++ " " ++ summary board ++ 
                             " a " ++  show alpha ++ " b " ++ show beta) foo
 
@@ -116,8 +115,8 @@ module Negamark where
   playGame board | length (allLegalMoves board) == 0 = do {return SquareOpen}
                  | findWinner board /= SquareOpen    = do
                        return (findWinner board)
-                 | activePlayer board == X           = do
-                       let result = pickMove board 5
+                 | activePlayer board == O           = do
+                       let result = pickMove board (22 - movesSoFar board)
                        putStrLn ("The best you can do is " ++ show (fst result))
                        ending <- playGame (head (snd result))
                        return ending
@@ -127,10 +126,11 @@ module Negamark where
                        return ending
 
   class TranspositionTable table where
-    getOutcome :: table -> Maybe Outcome
+    getOutcome :: table -> Integer -> IO (Maybe Outcome)
 
   data NullTranspositionTable = NullTranspositionTable
 
   instance TranspositionTable NullTranspositionTable where
-    getOutcome nullTable  = Nothing
+    getOutcome nullTable state = do
+      return Nothing
 
