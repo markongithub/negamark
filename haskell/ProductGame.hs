@@ -1,10 +1,7 @@
--- | People in other countries call it Aughts and Crosses or something
-
 module ProductGame where
-  import Array
+  import Data.Array
+  import Data.List
   import qualified Data.Map as Map
-  import IO
-  import List
   import Negamark
 
   height = 6
@@ -81,6 +78,10 @@ module ProductGame where
   showRow board row =
       concat (map (\x -> showSquare board (row,x)) [0..(width - 1)])
 
+  showSquares :: SquareArray -> [Char]
+  showSquares board =
+      concat (map (\y -> showRow board y) [0..(height - 1)])
+
   instance Show ProductGameState where
       show board =
           ("\n" ++
@@ -89,6 +90,11 @@ module ProductGame where
            "\nBottom factor is on " ++ show (bottomFactor board) ++ 
            "\nThis is move " ++ show ((movesSoFar board) + 1) ++
            ". It is " ++ show (activePlayer board) ++ "'s turn.")
+
+  instance Eq ProductGameState where
+      board == board' = (topFactor board) == (topFactor board') && (bottomFactor board) == (bottomFactor board') && (squares board) == (squares board')
+
+--      board == board' = ((topFactor board) == (topFactor board')) and (bottomFactor board == bottomFactor board') and (squares board == squares board')
 
   smallerFirst :: (Int, Int) -> (Int, Int)
   smallerFirst (x, y) | x > y     = (y, x)
@@ -286,5 +292,14 @@ module ProductGame where
     return (newProductGameStateFromMove (read top, read bottom) board)
 
   startGame = do
-    playGame newProductGame
+    playGame newProductGame False True 5
 
+  newProductGameStateFromMoveSet :: ProductGameState -> [FactorPair] ->
+                                    ProductGameState
+  newProductGameStateFromMoveSet board moveSet =
+      foldr newProductGameStateFromMove board (reverse moveSet)
+  
+  nineNine = foldr newProductGameStateFromMove newProductGame (reverse [(9,9)])
+  nineNineNew = newProductGameStateFromMoveSet newProductGame [(9,9)]
+
+  turningPoint = (iterate (\x -> head (snd (pickMove x 3))) newProductGame) !! 20

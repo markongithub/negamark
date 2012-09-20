@@ -50,7 +50,7 @@ module HSQLMySQLTranspositionTableModule where
           return (Just (Outcome (valueFromCode valueCode) depth heuristic))
         else return Nothing
 
-  insertQueryText :: Integer -> Outcome -> [Char]
+  insertQueryText :: Integer -> Outcome -> SQL
   insertQueryText state outcome =
      "REPLACE INTO transposition (state, value, depth, heuristic) VALUES (" ++
      show(state) ++ ", " ++ show(codeFromValue(value outcome)) ++ ", " ++ 

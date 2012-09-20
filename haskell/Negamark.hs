@@ -1,10 +1,12 @@
 -- | Nodes in game trees
 
 module Negamark where
-  import Array
   import Data.List
+  import Data.Function
+  import Data.List.Ordered (nubSortBy)
+  import Data.Maybe
+  import Data.Ord (comparing)
   import Debug.Trace
-  import IO
 
   data OutcomeValue = Loss | Stalemate | Heuristic | Win
                       deriving (Show, Eq, Ord)
@@ -53,17 +55,36 @@ module Negamark where
     getHumanMove :: gameState -> IO gameState
     summary :: gameState -> [Char]
     uniqueID :: gameState -> Integer
---    transpositionTable :: gameState -> TranspositionTable
+
+  boardsAfter :: NegamarkGameState a => a -> Int -> [a]
+  boardsAfter board 0     = [board]
+--  boardsAfter board depth = nubBy (\x y -> uniqueID x == uniqueID y) (concat (map allLegalMoves (boardsAfter board (depth - 1))))
+  boardsAfter board depth = nubSortBy (comparing uniqueID) $ concat (map allLegalMoves (boardsAfter board (depth - 1)))
 
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
-      Outcome Win (movesSoFar board) 1
+      Outcome Win (movesSoFar board) 0
   firstPass board | findWinner board == otherPlayer (activePlayer board) = 
       Outcome Loss (movesSoFar board) 0
   firstPass board | null (allLegalMoves board) =
       Outcome Stalemate (movesSoFar board) 0
   firstPass board | otherwise =
       Outcome Heuristic (movesSoFar board) (heuristicValue board)
+
+  firstPassIO :: (NegamarkGameState a, TranspositionTable b) => a -> b -> IO(Outcome)
+  firstPassIO board table = do
+    if findWinner board == activePlayer board
+        then return (Outcome Win (movesSoFar board) 0)
+        else if findWinner board == otherPlayer (activePlayer board)
+             then return (Outcome Loss (movesSoFar board) 0)
+             else if null (allLegalMoves board)
+                 then return (Outcome Stalemate (movesSoFar board) 0)
+                 else do fromCache <- getOutcome table (uniqueID board)
+--                         putStrLn ("It came back " ++ show (fromCache))
+                         return (fromMaybe (Outcome Heuristic (movesSoFar board) (heuristicValue board)) fromCache)
+--                         if fromCache /= Nothing
+--                             then return (fromJust fromCache)
+--                             else return (Outcome Heuristic (movesSoFar board) (heuristicValue board))
 
   negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
                (Outcome, [a])
@@ -74,7 +95,38 @@ module Negamark where
   negamark board depth alpha beta | otherwise =
       (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
       where recursiveOutcome =
-                   negamarkRecurse depth alpha beta (sortBy (\x y -> compare (firstPass x) (firstPass y)) (allLegalMoves board))
+                   negamarkRecurse depth alpha beta (sortMovesByFirstPass (allLegalMoves board))
+
+  negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int -> 
+                Outcome -> Outcome -> t -> IO(Outcome, [a])
+  negamarkIO board depth alpha beta table = do
+      fp <- firstPassIO board table
+      if depth == 0
+        then return (fp, [board])
+        else if value(fp) /= Heuristic
+          then return (fp, [board])
+          else do
+            sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
+            recursiveOutcome <- negamarkRecurseIO depth alpha beta sortedMoves table
+            saveOutcome table (uniqueID board) (opposite(fst recursiveOutcome))
+            return (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
+
+  sortMovesByFirstPass :: NegamarkGameState a => [a] -> [a]
+  sortMovesByFirstPass boards =
+      sortBy (compare `on` firstPass) boards
+      
+  compareIO :: (Ord a) => IO a -> IO a -> IO Ordering
+  compareIO thing1 thing2 = do
+    thing1value <- thing1
+    thing2value <- thing2
+    return (compare thing1value thing2value)
+
+
+  sortMovesByFirstPassIO :: (NegamarkGameState a, TranspositionTable t) => [a] ->
+                          t -> IO ([a])
+  sortMovesByFirstPassIO boards table = do
+    outcomes <- sequence (map (\x -> firstPassIO x table) boards)
+    return (map fst (sortBy (compare `on` snd) (zip boards outcomes)))
 
   traceNegamark board depth alpha beta foo
       | depth < 16  = foo
@@ -102,35 +154,84 @@ module Negamark where
              (negamarkRecurse depth newAlpha beta xs)
             newAlpha = max alpha (opposite (fst xOutcome))
 
+  negamarkRecurseIO :: (NegamarkGameState a, TranspositionTable t) => Int ->
+                       Outcome -> Outcome -> [a] -> t -> IO(Outcome, [a])
+  negamarkRecurseIO depth alpha beta (x:xs) table = do
+    if movesSoFar x >= maxMove table
+      then do
+        return (negamarkRecurse depth alpha beta (x:xs))
+      else do
+        xOutcome <- negamarkIO x (depth - 1) (opposite beta) (opposite alpha) table
+        let newAlpha = max alpha (opposite (fst xOutcome))
+        if (length xs == 0) || (newAlpha >= beta)
+          then return xOutcome
+          else do tailResult <- negamarkRecurseIO depth newAlpha beta xs table
+                  if opposite(fst xOutcome) >= opposite(fst tailResult)
+                    then return xOutcome
+                    else return tailResult
+
   negamarkSimple :: NegamarkGameState a => a -> Int -> (Outcome, [a])
   negamarkSimple board depth =
       negamark board depth (Outcome Loss 0 0) (Outcome Win 0 0)
 
   pickMove :: NegamarkGameState a => a -> Int -> (Outcome, [a])
   pickMove board depth = result
-      where result = (negamarkRecurse depth (Outcome Loss 0 0)
-                      (Outcome Win 0 0) (allLegalMoves board))
+      where result = (negamarkRecurse depth (Outcome Loss 37 0)
+                      (Outcome Win 36 0) (sortMovesByFirstPass (allLegalMoves board)))
 
-  playGame :: NegamarkGameState a => a -> IO SquareState
-  playGame board | length (allLegalMoves board) == 0 = do {return SquareOpen}
-                 | findWinner board /= SquareOpen    = do
-                       return (findWinner board)
-                 | activePlayer board == O           = do
-                       let result = pickMove board (22 - movesSoFar board)
-                       putStrLn ("The best you can do is " ++ show (fst result))
-                       ending <- playGame (head (snd result))
-                       return ending
-                 | otherwise = do
-                       nextMove <- getHumanMove board
-                       ending <- playGame nextMove
-                       return ending
+  pickMoveIO :: (NegamarkGameState a, TranspositionTable t) => a -> Int -> t -> IO(Outcome, [a])
+  pickMoveIO board depth table
+    | movesSoFar board >= maxMove table = return (pickMove board depth)
+    | otherwise  = do
+        sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
+        negamarkRecurseIO depth (Outcome Loss 38 0) (Outcome Win 37 0) sortedMoves table
+
+  isAutomated :: SquareState -> Bool -> Bool -> Bool
+  isAutomated player autoX autoO
+      | player == X && autoX = True
+      | player == O && autoO = True
+      | otherwise            = False
+
+  playGame :: NegamarkGameState a => a -> Bool -> Bool -> Int -> IO SquareState
+  playGame board autoX autoO strength
+      | length (allLegalMoves board) == 0 = do {return SquareOpen}
+      | findWinner board /= SquareOpen    = do
+            return (findWinner board)
+      | isAutomated (activePlayer board) autoX autoO = do
+            let result = pickMove board strength
+            putStrLn ("The best you can do is " ++ show (fst result))
+            ending <- playGame (head (snd result)) autoX autoO strength
+            return ending
+      | otherwise = do
+            nextMove <- getHumanMove board
+            ending <- playGame nextMove autoX autoO strength
+            return ending
+
+  playGameIO :: (NegamarkGameState a, TranspositionTable t) => a -> t -> IO SquareState
+  playGameIO board table | length (allLegalMoves board) == 0 = do {return SquareOpen}
+                         | findWinner board /= SquareOpen    = do
+                               return (findWinner board)
+                         | activePlayer board == X           = do
+                               result <- pickMoveIO board 10 table
+                               putStrLn ("The best you can do is " ++ show (fst result))
+                               ending <- playGameIO (head (snd result)) table
+                               return ending
+                         | otherwise = do
+                               nextMove <- getHumanMove board
+                               ending <- playGameIO nextMove table
+                               return ending
 
   class TranspositionTable table where
     getOutcome :: table -> Integer -> IO (Maybe Outcome)
+    saveOutcome :: table -> Integer -> Outcome -> IO ()
+    maxMove :: table -> Int
 
   data NullTranspositionTable = NullTranspositionTable
 
   instance TranspositionTable NullTranspositionTable where
     getOutcome nullTable state = do
       return Nothing
+    saveOutcome nullTable state outcome = do
+      return ()
+    maxMove nullTable = 0
 

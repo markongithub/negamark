@@ -1,8 +1,7 @@
 -- | People in other countries call it Aughts and Crosses or something
 
 module TicTacToe where
-  import Array
-  import IO
+  import Data.Array
   import Negamark
 
   data TicTacToeBoardState = TicTacToeBoardState
@@ -15,11 +14,12 @@ module TicTacToe where
     activePlayer board = activePlayerTTT board
     movesSoFar board = movesSoFarTTT board
     heuristicValue board = 0 -- in the ghetto... IN THE GHETTO...
+    uniqueID board = 0
+    summary board = "whatever"
     findWinner board = findTicTacToeWinner board waysToWin
     allLegalMoves board = 
         map (\m -> newTicTacToeStateFromMove m board) (availableMoves board)
     getHumanMove board = getHumanTicTacToeMove board
-    showBoard board = show board
 
   squareState board i = (squares board)!i
   squareAvailable board i = squareState board i == SquareOpen
