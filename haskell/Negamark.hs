@@ -1,41 +1,51 @@
--- | Nodes in game trees
+-- | Nodes in game treeS
 
 module Negamark where
-  import Data.List
-  import Data.Function
+  import Data.List (sortBy)
+  import Data.Function (on)
   import Data.List.Ordered (nubSortBy)
   import Data.Maybe
   import Data.Ord (comparing)
   import Debug.Trace
 
-  data OutcomeValue = Loss | Stalemate | Heuristic | Win
-                      deriving (Show, Eq, Ord)
+  type MoveNumber = Int
+  type HeuristicValue = Int
 
-  data Outcome = Outcome OutcomeValue Int Int
+  data Outcome = Win MoveNumber | Stalemate MoveNumber | Loss MoveNumber
+               | Heuristic MoveNumber HeuristicValue
                  deriving (Eq) 
 
-  value (Outcome a b c) = a
-  depth (Outcome a b c) = b
-  heuristic (Outcome a b c) = c
-
   opposite :: Outcome -> Outcome
-  opposite (Outcome Loss depth _) = Outcome Win depth 0
-  opposite (Outcome Win depth _) = Outcome Loss depth 0
-  opposite (Outcome Heuristic depth heuristic) =
-      Outcome Heuristic depth (-1 * heuristic)
-  opposite (Outcome Stalemate depth _) = Outcome Stalemate depth 0
+  opposite (Loss depth) = Win depth
+  opposite (Win depth) = Loss depth
+  opposite (Heuristic depth heuristic) = Heuristic depth (-1 * heuristic)
+  opposite (Stalemate depth) = Stalemate depth
 
   instance Show Outcome where
-    show (Outcome v d h)
-        | v == Heuristic = show v ++ show h ++ "@" ++ show d
-        | otherwise      = show v ++ "@" ++ show d
+    show (Win depth) = "Win@" ++ show depth
+    show (Loss depth) = "Loss@" ++ show depth
+    show (Stalemate depth) = "Stalemate@" ++ show depth
+    show (Heuristic depth heuristic) = 
+        "Heuristic" ++ show heuristic ++ "@" ++ show depth
 
   instance Ord Outcome where
-    compare (Outcome v1 d1 h1) (Outcome v2 d2 h2)
-        | v1 /= v2        = compare v1 v2
-        | v1 == Win       = compare d2 d1
-        | v1 == Heuristic = compare h1 h2
-        | otherwise       = compare d1 d2
+    compare (Win d1) (Win d2) = compare d2 d1
+    compare (Win d1) whatever = GT
+    compare (Heuristic _ _) (Win _) = LT
+    compare (Heuristic d1 h1) (Heuristic d2 h2)
+      | h1 /= h2  = compare h1 h2
+      | otherwise = compare d1 d2
+    compare (Heuristic _ _) whatever = GT
+    compare (Stalemate _) (Win _) = LT
+    compare (Stalemate _) (Heuristic _ _) = LT
+    compare (Stalemate d1) (Stalemate d2) = compare d1 d2
+    compare (Stalemate _) whatever = GT
+    compare (Loss d1) (Loss d2) = compare d1 d2
+    compare (Loss _) whatever = LT
+
+  isHeuristic :: Outcome -> Bool
+  isHeuristic (Heuristic _ _) = True
+  isHeuristic whatever = False
 
   data SquareState = X | O | SquareOpen
                      deriving (Eq, Show)
@@ -48,8 +58,8 @@ module Negamark where
   
   class NegamarkGameState gameState where
     activePlayer :: gameState -> SquareState
-    movesSoFar :: gameState -> Int
-    heuristicValue :: gameState -> Int
+    movesSoFar :: gameState -> MoveNumber
+    heuristicValue :: gameState -> HeuristicValue
     findWinner :: gameState -> SquareState
     allLegalMoves :: gameState -> [gameState]
     getHumanMove :: gameState -> IO gameState
@@ -63,25 +73,25 @@ module Negamark where
 
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
-      Outcome Win (movesSoFar board) 0
+      Win (movesSoFar board)
   firstPass board | findWinner board == otherPlayer (activePlayer board) = 
-      Outcome Loss (movesSoFar board) 0
+      Loss (movesSoFar board)
   firstPass board | null (allLegalMoves board) =
-      Outcome Stalemate (movesSoFar board) 0
+      Stalemate (movesSoFar board)
   firstPass board | otherwise =
-      Outcome Heuristic (movesSoFar board) (heuristicValue board)
+      Heuristic (movesSoFar board) (heuristicValue board)
 
   firstPassIO :: (NegamarkGameState a, TranspositionTable b) => a -> b -> IO(Outcome)
   firstPassIO board table = do
     if findWinner board == activePlayer board
-        then return (Outcome Win (movesSoFar board) 0)
+        then return (Win (movesSoFar board))
         else if findWinner board == otherPlayer (activePlayer board)
-             then return (Outcome Loss (movesSoFar board) 0)
+             then return (Loss (movesSoFar board))
              else if null (allLegalMoves board)
-                 then return (Outcome Stalemate (movesSoFar board) 0)
+                 then return (Stalemate (movesSoFar board))
                  else do fromCache <- getOutcome table (uniqueID board)
 --                         putStrLn ("It came back " ++ show (fromCache))
-                         return (fromMaybe (Outcome Heuristic (movesSoFar board) (heuristicValue board)) fromCache)
+                         return (fromMaybe (Heuristic (movesSoFar board) (heuristicValue board)) fromCache)
 --                         if fromCache /= Nothing
 --                             then return (fromJust fromCache)
 --                             else return (Outcome Heuristic (movesSoFar board) (heuristicValue board))
@@ -90,8 +100,7 @@ module Negamark where
                (Outcome, [a])
   negamark board depth alpha beta | traceNegamark board depth alpha beta False = undefined
   negamark board 0     alpha beta = (firstPass board, [board])
-  negamark board depth alpha beta | value(firstPass board) /= Heuristic =
-      (firstPass board, [board])
+  negamark board depth alpha beta | not $ isHeuristic $ firstPass board = (firstPass board, [board])
   negamark board depth alpha beta | otherwise =
       (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
       where recursiveOutcome =
@@ -103,7 +112,7 @@ module Negamark where
       fp <- firstPassIO board table
       if depth == 0
         then return (fp, [board])
-        else if value(fp) /= Heuristic
+        else if not $ isHeuristic fp
           then return (fp, [board])
           else do
             sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
@@ -172,19 +181,19 @@ module Negamark where
 
   negamarkSimple :: NegamarkGameState a => a -> Int -> (Outcome, [a])
   negamarkSimple board depth =
-      negamark board depth (Outcome Loss 0 0) (Outcome Win 0 0)
+      negamark board depth (Loss 0) (Win 0)
 
   pickMove :: NegamarkGameState a => a -> Int -> (Outcome, [a])
   pickMove board depth = result
-      where result = (negamarkRecurse depth (Outcome Loss 37 0)
-                      (Outcome Win 36 0) (sortMovesByFirstPass (allLegalMoves board)))
+      where result = (negamarkRecurse depth (Loss 37)
+                      (Win 36) (sortMovesByFirstPass (allLegalMoves board)))
 
   pickMoveIO :: (NegamarkGameState a, TranspositionTable t) => a -> Int -> t -> IO(Outcome, [a])
   pickMoveIO board depth table
     | movesSoFar board >= maxMove table = return (pickMove board depth)
     | otherwise  = do
         sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
-        negamarkRecurseIO depth (Outcome Loss 38 0) (Outcome Win 37 0) sortedMoves table
+        negamarkRecurseIO depth (Loss 38) (Win 37) sortedMoves table
 
   isAutomated :: SquareState -> Bool -> Bool -> Bool
   isAutomated player autoX autoO

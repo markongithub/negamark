@@ -8,6 +8,8 @@ module HSQLMySQLTranspositionTableModule where
   import Database.HSQL.MySQL
   import Negamark
 
+  type SQL = String
+
   instance TranspositionTable HSQLMySQLTranspositionTable where
     getOutcome table state = getOutcomeMySQL table state
     saveOutcome table state outcome = saveOutcomeMySQL table state outcome
@@ -18,21 +20,13 @@ module HSQLMySQLTranspositionTableModule where
       , maxMoveMySQL           :: Int
       }
 
-  codeFromValue :: OutcomeValue -> Int
-  codeFromValue value
-      | value == Loss      = 20
-      | value == Stalemate = 21
-      | value == Heuristic = 22
-      | value == Win       = 23
-      | otherwise  = error "ugh"
-
-  valueFromCode :: Int -> OutcomeValue
-  valueFromCode code
-      | code == 20 = Loss
-      | code == 21 = Stalemate
-      | code == 22 = Heuristic
-      | code == 23 = Win
-      | otherwise  = error "ugh"
+  outcomeFromRecord :: String -> MoveNumber -> HeuristicValue -> Outcome
+  outcomeFromRecord value depth heuristic
+      | value == "Loss"      = Loss depth
+      | value == "Stalemate" = Stalemate depth
+      | value == "Heuristic" = Heuristic depth heuristic
+      | value == "Win"       = Win depth
+      | otherwise  = error ("We got an invalid value: " ++ value)
 
   getOutcomeMySQL :: HSQLMySQLTranspositionTable -> Integer -> IO (Maybe Outcome)
   getOutcomeMySQL table state = do
@@ -41,20 +35,30 @@ module HSQLMySQLTranspositionTableModule where
 --      putStrLn query_text
       stmt <- query conn query_text
       fetched <- fetch stmt
-      closeStatement stmt
       if fetched
         then do
-          valueCode <- getFieldValue stmt "value"
+          value <- getFieldValue stmt "value"
           depth <- getFieldValue stmt "depth"
           heuristic <- getFieldValue' stmt "heuristic" 0
-          return (Just (Outcome (valueFromCode valueCode) depth heuristic))
-        else return Nothing
+          closeStatement stmt
+          return (Just (outcomeFromRecord value depth heuristic))
+        else do
+          closeStatement stmt
+          return Nothing
+
+  sqlValues :: Outcome -> (String, String, String)
+  sqlValues (Loss depth)                = ("'Loss'", show depth, "NULL")
+  sqlValues (Stalemate depth)           = ("'Stalemate'", show depth, "NULL")
+  sqlValues (Heuristic depth heuristic) = ("'Heuristic'", show depth,
+                                           show heuristic)
+  sqlValues (Win depth)                 = ("'Win'", show depth, "NULL")
 
   insertQueryText :: Integer -> Outcome -> SQL
   insertQueryText state outcome =
-     "REPLACE INTO transposition (state, value, depth, heuristic) VALUES (" ++
-     show(state) ++ ", " ++ show(codeFromValue(value outcome)) ++ ", " ++ 
-     show(depth outcome) ++ ", " ++ show(heuristic outcome) ++ ")"
+      "REPLACE INTO transposition (state, value, depth, heuristic) VALUES (" ++
+      show(state) ++ ", " ++ valueCode ++ ", " ++ depth ++ ", " ++ heuristic ++ 
+      ")"
+    where (valueCode, depth, heuristic) = sqlValues outcome 
  
   saveOutcomeMySQL :: HSQLMySQLTranspositionTable -> Integer -> Outcome -> IO()
   saveOutcomeMySQL table state outcome = do

@@ -1,8 +1,7 @@
 import Negamark
 import TicTacToe
 import Test.HUnit
-import Char
-import Maybe
+import Data.Maybe
 
 testBoard = foldr newTicTacToeStateFromMove newTicTacToeBoard [1,4,0,3]
 winningBoard = foldr newTicTacToeStateFromMove newTicTacToeBoard [5,1,4,0,3]
@@ -14,18 +13,17 @@ xWinsOnLastTurn =
     foldr newTicTacToeStateFromMove newTicTacToeBoard [6,8,7,3,2,1,5,0,4]
 
 tests = TestList [
-    TestCase (assertEqual "whatever" 19 (depth(Outcome Loss 19 0))),
     TestCase (assertEqual "whatever" 
-              (Outcome Heuristic 19 (-22))
-              (opposite (Outcome Heuristic 19 22))),
+              (Heuristic 19 (-22))
+              (opposite (Heuristic 19 22))),
     TestCase (assertBool "whatever" 
-              ((Outcome Stalemate 36 0) > (Outcome Loss 19 0))),
+              ((Stalemate 36) > (Loss 19))),
     TestCase (assertBool "whatever" 
-              ((Outcome Loss 36 0) > (Outcome Loss 19 0))),
+              ((Loss 36) > (Loss 19))),
     TestCase (assertBool "whatever" 
-              ((Outcome Win 19 0) > (Outcome Win 36 0))),
-    TestCase (assertEqual "whatever" (Outcome Heuristic 19 (-22))
-              (opposite (Outcome Heuristic 19 22))),
+              ((Win 19) > (Win 36))),
+    TestCase (assertEqual "whatever" (Heuristic 19 (-22))
+              (opposite (Heuristic 19 22))),
     TestCase (assertEqual "whatever" SquareOpen
               (squareState newTicTacToeBoard 2)),
     TestCase (assertEqual "8" SquareOpen
@@ -38,27 +36,27 @@ tests = TestList [
               (findWinner winningBoard)),
     TestCase (assertEqual "whatever" X
               (findTicTacToeWinner winningBoard waysToWin)),
-    TestCase (assertEqual "13" (Outcome Loss 5 0)
+    TestCase (assertEqual "13" (Loss 5)
               (firstPass winningBoard)),
-    TestCase (assertEqual "14" (Outcome Loss 5 0)
-              (fst (negamark winningBoard 0 (Outcome Loss 0 0) (Outcome Win 0 0)))),
-    TestCase (assertEqual "15" (Outcome Heuristic 4 0)
+    TestCase (assertEqual "14" (Loss 5)
+              (fst (negamark winningBoard 0 (Loss 0) (Win 0)))),
+    TestCase (assertEqual "15" (Heuristic 4 0)
               (firstPass testBoard)),
-    TestCase (assertEqual "16" (Outcome Win 5 0)
-              (fst (negamark testBoard 6 (Outcome Loss 0 0) (Outcome Win 0 0)))),
-    TestCase (assertEqual "whatever" (Outcome Win 5 0)
-              (fst (negamark testBoard 6 (Outcome Loss 0 0) (Outcome Win 0 0)))),
-    TestCase (assertEqual "whatever" (Outcome Loss 7 0)
-              (fst (negamark xIsGonnaWin 4 (Outcome Loss 0 0) (Outcome Win 0 0)))),
-    TestCase (assertEqual "whatever" (Outcome Loss 9 0)
-              (fst (negamark xWinsOnLastTurn 0 (Outcome Loss 0 0)(Outcome Win 0 0)))),
+    TestCase (assertEqual "16" (Win 5)
+              (fst (negamark testBoard 6 (Loss 0) (Win 0)))),
+    TestCase (assertEqual "whatever" (Win 5)
+              (fst (negamark testBoard 6 (Loss 0) (Win 0)))),
+    TestCase (assertEqual "whatever" (Loss 7)
+              (fst (negamark xIsGonnaWin 4 (Loss 0) (Win 0)))),
+    TestCase (assertEqual "whatever" (Loss 9)
+              (fst (negamark xWinsOnLastTurn 0 (Loss 0)(Win 0)))),
     TestCase (assertEqual "whatevz" [2, 5, 6, 7, 8] (availableMoves testBoard)),
-    TestCase (assertEqual "nsimple on xcanwinnow" (Outcome Win 5 0)
+    TestCase (assertEqual "nsimple on xcanwinnow" (Win 5)
               (fst (negamarkSimple xCanWinNow 5))),
     TestCase (assertEqual "whatever" X
               (squareState (head (snd (pickMove xCanWinNow 5))) 5)),
     TestCase (assertEqual "whatevz" 5 (length(allLegalMoves testBoard))),
-    TestCase (assertEqual "X let O win" (Outcome Win 6 0)
+    TestCase (assertEqual "X let O win" (Win 6)
               (fst (negamarkSimple xLetOWin 9))),
     TestCase (assertEqual "whatever" X
               (squareState (head (snd (pickMove xCouldLose 5))) 2)),
