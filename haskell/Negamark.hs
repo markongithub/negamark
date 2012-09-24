@@ -235,6 +235,12 @@ module Negamark where
             nextMove <- getHumanMove board
             ending <- playGame nextMove autoX autoO strength
             return ending
+  proveIsLossIO :: (NegamarkGameState a, TranspositionTable t) =>
+                   a -> Int -> t -> IO Bool
+  proveIsLossIO board depth table = do
+      (outcome, _) <- negamarkIO board 18 (Loss 1000) (Loss 1001) table
+      return (outcome <= (Loss 1001))
+
 
   playGameIO :: (NegamarkGameState a, TranspositionTable t) => a -> t -> IO SquareState
   playGameIO board table | length (allLegalMoves board) == 0 = do {return SquareOpen}
