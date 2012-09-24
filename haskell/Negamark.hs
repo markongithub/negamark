@@ -183,10 +183,30 @@ module Negamark where
   negamarkSimple board depth =
       negamark board depth (Loss 0) (Win 0)
 
+  proveIsLoss :: NegamarkGameState a => a -> Int -> Bool
+  proveIsLoss board depth = 
+      fst (negamark board depth (Loss 1000) (Loss 1001)) <= (Loss 1001)
+
+  proveIsWin :: NegamarkGameState a => a -> Int -> Bool
+  proveIsWin board depth = 
+      fst (negamark board depth (Win 1001) (Win 1000)) >= (Win 1001)
+
   pickMove :: NegamarkGameState a => a -> Int -> (Outcome, [a])
   pickMove board depth = result
       where result = (negamarkRecurse depth (Loss 37)
                       (Win 36) (sortMovesByFirstPass (allLegalMoves board)))
+
+  proveIsLossIO :: (NegamarkGameState a, TranspositionTable t) =>
+                   a -> Int -> t -> IO Bool
+  proveIsLossIO board depth table = do
+      (outcome, _) <- negamarkIO board depth (Loss 1000) (Loss 1001) table
+      return (outcome <= (Loss 1001))
+
+  proveIsWinIO :: (NegamarkGameState a, TranspositionTable t) =>
+                   a -> Int -> t -> IO Bool
+  proveIsWinIO board depth table = do
+      (outcome, _) <- negamarkIO board depth (Win 1001) (Win 1000) table
+      return (outcome >= (Win 1001))
 
   pickMoveIO :: (NegamarkGameState a, TranspositionTable t) => a -> Int -> t -> IO(Outcome, [a])
   pickMoveIO board depth table
