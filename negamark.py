@@ -159,6 +159,7 @@ class NegamarkBoard(object):
   def first_pass(self):
     transposition_outcome = self.get_transposition_outcome()
     if transposition_outcome:
+      logging.debug("The transposition table said %s" % str(transposition_outcome))
       logging.debug("The transposition table says %s which saves us from recursing down %d "
                     "levels." %  (str(transposition_outcome),
                                   transposition_outcome.depth - self.moves_so_far))

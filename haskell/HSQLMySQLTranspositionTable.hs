@@ -64,7 +64,7 @@ module HSQLMySQLTranspositionTableModule where
   saveOutcomeMySQL table state outcome = do
       let conn = connMySQL table
       let query_text = insertQueryText state outcome
-      putStrLn query_text
+--      putStrLn query_text
       stmt <- query conn query_text
       closeStatement stmt
 

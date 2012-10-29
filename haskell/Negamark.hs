@@ -43,9 +43,9 @@ module Negamark where
     compare (Loss d1) (Loss d2) = compare d1 d2
     compare (Loss _) whatever = LT
 
-  isHeuristic :: Outcome -> Bool
-  isHeuristic (Heuristic _ _) = True
-  isHeuristic whatever = False
+  isAuthoritative :: Outcome -> Int -> Bool
+  isAuthoritative (Heuristic depth _) searchDepth = depth >= searchDepth
+  isAuthoritative _ _ = True
 
   data SquareState = X | O | SquareOpen
                      deriving (Eq, Show)
@@ -100,7 +100,7 @@ module Negamark where
                (Outcome, [a])
   negamark board depth alpha beta | traceNegamark board depth alpha beta False = undefined
   negamark board 0     alpha beta = (firstPass board, [board])
-  negamark board depth alpha beta | not $ isHeuristic $ firstPass board = (firstPass board, [board])
+  negamark board depth alpha beta | isAuthoritative (firstPass board) (movesSoFar board + depth) = (firstPass board, [board])
   negamark board depth alpha beta | otherwise =
       (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
       where recursiveOutcome =
@@ -108,11 +108,12 @@ module Negamark where
 
   negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int -> 
                 Outcome -> Outcome -> t -> IO(Outcome, [a])
+  negamarkIO board depth alpha beta table | traceNegamark board depth alpha beta False = undefined
   negamarkIO board depth alpha beta table = do
       fp <- firstPassIO board table
       if depth == 0
         then return (fp, [board])
-        else if not $ isHeuristic fp
+        else if (isAuthoritative fp (movesSoFar board + depth))
           then return (fp, [board])
           else do
             sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
@@ -235,12 +236,6 @@ module Negamark where
             nextMove <- getHumanMove board
             ending <- playGame nextMove autoX autoO strength
             return ending
-  proveIsLossIO :: (NegamarkGameState a, TranspositionTable t) =>
-                   a -> Int -> t -> IO Bool
-  proveIsLossIO board depth table = do
-      (outcome, _) <- negamarkIO board 18 (Loss 1000) (Loss 1001) table
-      return (outcome <= (Loss 1001))
-
 
   playGameIO :: (NegamarkGameState a, TranspositionTable t) => a -> t -> IO SquareState
   playGameIO board table | length (allLegalMoves board) == 0 = do {return SquareOpen}
