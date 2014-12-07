@@ -104,15 +104,26 @@ module ProductGame where
   potentialMoves factor = map (\x -> (smallerFirst(factor, x))) [1..9]
 
   allPotentialMoves :: ProductGameState -> [(Int, Int)]
-  allPotentialMoves board | topFactor board == 0 =
-      nub (concat (map potentialMoves [1..9]))
-  allPotentialMoves board = nub (concat [potentialMoves (topFactor board),
-                                         potentialMoves (bottomFactor board)])
+  -- If I am X and both factors are 0, I get to move both factors.
+  -- If I am O and both factors are 0, I get to move the bottom one.
+  -- If only the top factor is 0, I get to move that one.
+  allPotentialMoves board
+    | topFactor board /= 0 = normalMove
+    | bottomFactor board /= 0 = topFactorMove
+    | activePlayerPG board == O = topFactorMove
+    | otherwise = twoFactorMove
+    where normalMove = nub (concat [potentialMoves (topFactor board),
+                                    potentialMoves (bottomFactor board)])
+          topFactorMove = potentialMoves (bottomFactor board)
+          twoFactorMove = nub (concat (map potentialMoves [1..9]))
 
   availableMoves :: ProductGameState -> [(Int, Int)]
-  availableMoves board =
-      filter (\x -> squareAvailable board (factorsToCoords x))
-             (allPotentialMoves board)
+  availableMoves board = filter (moveAvailable board) $ allPotentialMoves board
+
+  moveAvailable :: ProductGameState -> FactorPair -> Bool
+  moveAvailable board (top, bottom)
+    | (top == 0) || (bottom == 0) = True
+    | otherwise = squareAvailable board (factorsToCoords (top, bottom))
 
   oneDArray :: Int -> a -> (Array Int a)
   oneDArray size defaultValue = array (0, (size - 1))
@@ -207,7 +218,7 @@ module ProductGame where
             opp = playerIndex (otherPlayer player)
 
   factorID :: FactorPair -> Int
-  factorID (0, 0) = 0
+  factorID (0, bottom) = factorID(3 + bottom `div` 2, 1 + bottom `mod` 2)
   factorID (top, bottom) = (9 * (top - 1)) + (bottom - 1)
 
   squareUniqueID :: SquareXY -> SquareState -> Integer
@@ -217,20 +228,27 @@ module ProductGame where
             row = fromIntegral (fst coords)
             col = fromIntegral (snd coords)
 
-  updateUniqueID :: ProductGameState -> SquareXY -> FactorPair ->
-                    Integer
-  updateUniqueID oldBoard (row, col) (top, bottom) =
+  updateUniqueID :: ProductGameState -> FactorPair -> Integer
+  updateUniqueID oldBoard (top, bottom) =
       (uniqueIDPG oldBoard)
       + fromIntegral (factorID(top, bottom))
-      + fromIntegral (squareUniqueID (row, col) (activePlayer oldBoard))
+      + squareDiff
       - fromIntegral (factorID (topFactor oldBoard, bottomFactor oldBoard))
-  
+      where (row, col) = factorsToCoords (top, bottom)
+            squareDiff = if top == 0 || bottom == 0 then 0 else fromIntegral (squareUniqueID (row, col) (activePlayer oldBoard))
+ 
+  reverseTopBottomID :: Integer -> FactorPair
+  reverseTopBottomID uniqueID
+    | tempTop <= tempBottom = (tempTop, tempBottom)  
+    | otherwise = (0, 2 * tempTop + tempBottom - 7)
+    where tempTop = fromIntegral(uniqueID `div` 9) + 1
+          tempBottom = fromIntegral(uniqueID `mod` 9) + 1
+ 
   reverseUniqueIDInner :: Integer ->
                           (SquareArray, FactorPair)
   reverseUniqueIDInner uniqueID
       | uniqueID <= 80 = (twoDArray height width SquareOpen, 
-                          (fromIntegral(uniqueID `div` 9) + 1,
-                           fromIntegral(uniqueID `mod` 9) + 1))
+                          reverseTopBottomID uniqueID)
       | otherwise      = (nextSquares // [(row, nextSquares!row // [(col, reversePlayerIndex(thisDigit - 1))])], snd nextOne)
       where exp = floor (logBase 3 (fromIntegral(uniqueID)))
             thisDigit = fromIntegral(uniqueID `div` (3 ^ exp))
@@ -252,8 +270,11 @@ module ProductGame where
                        , winScores = initialWinScores
                        , quickWinScores = (oneDArray 2 0)
                        , summaryPG = ""
-                       , uniqueIDPG = 0
+                       , uniqueIDPG = 18
                        }
+
+  modifiedProductGame :: ProductGameState
+  modifiedProductGame = newProductGame {activePlayerPG = O}
 
   newSquaresFromMove :: SquareArray -> FactorPair ->
                         SquareState -> SquareArray
@@ -262,8 +283,15 @@ module ProductGame where
 
   newProductGameStateFromMove :: FactorPair -> ProductGameState ->
                                  ProductGameState
-  newProductGameStateFromMove (top, bottom) oldBoard =
-      ProductGameState { squares =
+  newProductGameStateFromMove (top, bottom) oldBoard
+      | top == 0 || bottom == 0 = oldBoard {
+          topFactor = top,
+          bottomFactor = bottom,
+          activePlayerPG = otherPlayer (activePlayerPG oldBoard),
+          uniqueIDPG = updateUniqueID oldBoard (top, bottom),
+          summaryPG = (summaryPG oldBoard ++ " " ++ show (top, bottom))
+        }
+      | otherwise = ProductGameState { squares =
           newSquaresFromMove (squares oldBoard) coords (activePlayerPG oldBoard)
                        , activePlayerPG = otherPlayer (activePlayerPG oldBoard)
                        , topFactor = top
@@ -274,7 +302,7 @@ module ProductGame where
                        , summaryPG =
               (summaryPG oldBoard ++ " " ++ show (top, bottom))
                        , uniqueIDPG =
-              updateUniqueID oldBoard coords (top, bottom)
+              updateUniqueID oldBoard (top, bottom)
                        }
       where coords = productCoords (top * bottom)
             scoreUpdate =
@@ -303,3 +331,8 @@ module ProductGame where
   nineNineNew = newProductGameStateFromMoveSet newProductGame [(9,9)]
 
   turningPoint = (iterate (\x -> head (snd (pickMove x 3))) newProductGame) !! 20
+
+  bugGame = newProductGameStateFromMoveSet newProductGame [(1,9), (2,9), (1,2), (2,8), (1,8), (4,8), (4,5), (2,5), (5,6), (5,9), (7,9), (4,7), (1,7), (1,5), (1,1), (1,4), (1,6)]
+  -- In this situation O should go to 1,3 for a win at 20!
+  playBugGame = playGame bugGame False True 7
+  -- then have X go to 1,4
