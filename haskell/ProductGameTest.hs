@@ -1,8 +1,7 @@
 import Negamark
 import ProductGame
 import Test.HUnit
-import Char
-import Maybe
+import Data.Maybe
 
 fourSquare = foldr newProductGameStateFromMove newProductGame [(4,4)]
 xCanWin = foldr newProductGameStateFromMove newProductGame [
@@ -17,12 +16,12 @@ principalVariation = reverse [
     (2,4), (4,9), (3,9), (3,3), (3,8), (4,8)]
 afterTwoMoves = foldr newProductGameStateFromMove newProductGame (reverse [
     (1,1), (1,7)])
+allFactorPairs = [(x, y) | x <- [0..9], y <- [0..9], x<=y]
 
 tests = TestList [
-    TestCase (assertEqual "whatever" 19 (depth(Outcome Loss 19 0)))
-  , TestCase (assertEqual "whatever" 
-              (Outcome Heuristic 19 (-22))
-              (opposite (Outcome Heuristic 19 22)))
+    TestCase (assertEqual "whatever" 
+              (Heuristic 19 (-22))
+              (opposite (Heuristic 19 22)))
   , TestCase (assertEqual "" X (squareState (squares fourSquare) 2 1))
   , TestCase (assertEqual "" SquareOpen (squareState (squares fourSquare) 2 2))
   , TestCase (assertEqual "" 45 (length (availableMoves newProductGame)))
@@ -31,7 +30,7 @@ tests = TestList [
                           (allIndicesForTetrad goRight (0,0)))
   , TestCase (assertEqual "" 54 (length allWinningTetrads))
   , TestCase (assertEqual "" X (findWinner xHasWon))
-  , TestCase (assertEqual "" (Outcome Loss 7 0)
+  , TestCase (assertEqual "" (Loss 7)
                           (fst (negamarkSimple xHasWon 0)))
   , TestCase (assertEqual "" 0  (factorID (1,1)))
   , TestCase (assertEqual "" 80 (factorID (9,9)))
@@ -47,6 +46,7 @@ tests = TestList [
   , TestCase (assertEqual "" ((2 * (3^(19+4))) + (9 * (3-1)) + (9-1))
                           (uniqueID (newProductGameStateFromMove (3,9)
                                      newProductGame)))
+  , TestCase (assertEqual "" allFactorPairs (map (reverseTopBottomID . fromIntegral . factorID) allFactorPairs))
     ]
 
 main = runTestTT tests
