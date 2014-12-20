@@ -119,8 +119,8 @@ module Negamark where
   sortMovesByFirstPass boards =
       sortBy (compare `on` firstPass) boards
 
-  sortMovesByFirstPassIO :: (NegamarkGameState a, TranspositionTable t) => [a] ->
-                          t -> IO ([a])
+  sortMovesByFirstPassIO :: (NegamarkGameState a, TranspositionTable t) =>
+                            [a] -> t -> IO ([a])
   sortMovesByFirstPassIO boards table = do
     outcomes <- sequence (map (\x -> firstPassIO x table) boards)
     return (map fst (sortBy (compare `on` snd) (zip boards outcomes)))
@@ -131,7 +131,7 @@ module Negamark where
                             " a " ++  show alpha ++ " b " ++ show beta) foo
 
   negamarkRecurse :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] ->
-       (Outcome, [a])
+                                            (Outcome, [a])
   negamarkRecurse depth alpha beta [] = error "maximum of empty list"
   negamarkRecurse depth alpha beta (x:xs)
 --     | trace ("nmr d " ++ show depth ++ " " ++ summary x ++ " a " ++ show alpha ++ " b " ++ show beta ++ " with " ++ show (length xs) ++ " more to go") False = undefined
@@ -192,7 +192,8 @@ module Negamark where
   proveIsWinIO board depth table =
       liftM fst $ negamarkIO board depth (Win 1001) (Win 1000) table
 
-  pickMoveIO :: (NegamarkGameState a, TranspositionTable t) => a -> Int -> t -> IO(Outcome, [a])
+  pickMoveIO :: (NegamarkGameState a, TranspositionTable t) =>
+                a -> Int -> t -> IO(Outcome, [a])
   pickMoveIO board depth table
     | movesSoFar board >= maxMove table = return (pickMove board depth)
     | otherwise  = do
