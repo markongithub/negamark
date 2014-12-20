@@ -124,13 +124,6 @@ module Negamark where
   sortMovesByFirstPass boards =
       sortBy (compare `on` firstPass) boards
       
-  compareIO :: (Ord a) => IO a -> IO a -> IO Ordering
-  compareIO thing1 thing2 = do
-    thing1value <- thing1
-    thing2value <- thing2
-    return (compare thing1value thing2value)
-
-
   sortMovesByFirstPassIO :: (NegamarkGameState a, TranspositionTable t) => [a] ->
                           t -> IO ([a])
   sortMovesByFirstPassIO boards table = do
