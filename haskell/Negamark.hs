@@ -12,7 +12,7 @@ module Negamark where
 
   data Outcome = Win MoveNumber | Stalemate MoveNumber | Loss MoveNumber
                | Heuristic MoveNumber HeuristicValue
-                 deriving (Eq) 
+                 deriving (Eq)
 
   opposite :: Outcome -> Outcome
   opposite (Loss depth) = Win depth
@@ -24,7 +24,7 @@ module Negamark where
     show (Win depth) = "Win@" ++ show depth
     show (Loss depth) = "Loss@" ++ show depth
     show (Stalemate depth) = "Stalemate@" ++ show depth
-    show (Heuristic depth heuristic) = 
+    show (Heuristic depth heuristic) =
         "Heuristic" ++ show heuristic ++ "@" ++ show depth
 
   instance Ord Outcome where
@@ -54,7 +54,7 @@ module Negamark where
   endingDescription :: SquareState -> [Char]
   endingDescription SquareOpen = "We'll call it a draw."
   endingDescription player = (show player ++ " is the winner.")
-  
+
   class NegamarkGameState gameState where
     activePlayer :: gameState -> SquareState
     movesSoFar :: gameState -> MoveNumber
@@ -73,7 +73,7 @@ module Negamark where
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
       Win (movesSoFar board)
-  firstPass board | findWinner board == otherPlayer (activePlayer board) = 
+  firstPass board | findWinner board == otherPlayer (activePlayer board) =
       Loss (movesSoFar board)
   firstPass board | null (allLegalMoves board) =
       Stalemate (movesSoFar board)
@@ -100,7 +100,7 @@ module Negamark where
       where recursiveOutcome =
                    negamarkRecurse depth alpha beta (sortMovesByFirstPass (allLegalMoves board))
 
-  negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int -> 
+  negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int ->
                 Outcome -> Outcome -> t -> IO(Outcome, [a])
   negamarkIO board depth alpha beta table | traceNegamark board depth alpha beta False = undefined
   negamarkIO board depth alpha beta table = do
@@ -118,7 +118,7 @@ module Negamark where
   sortMovesByFirstPass :: NegamarkGameState a => [a] -> [a]
   sortMovesByFirstPass boards =
       sortBy (compare `on` firstPass) boards
-      
+
   sortMovesByFirstPassIO :: (NegamarkGameState a, TranspositionTable t) => [a] ->
                           t -> IO ([a])
   sortMovesByFirstPassIO boards table = do
@@ -127,7 +127,7 @@ module Negamark where
 
   traceNegamark board depth alpha beta foo
       | depth < 16  = foo
-      | otherwise  = trace ("nm  d " ++ show depth ++ " " ++ summary board ++ 
+      | otherwise  = trace ("nm  d " ++ show depth ++ " " ++ summary board ++
                             " a " ++  show alpha ++ " b " ++ show beta) foo
 
   negamarkRecurse :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] ->
