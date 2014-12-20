@@ -1,5 +1,3 @@
--- | Nodes in game treeS
-
 module Negamark where
   import Data.List (sortBy)
   import Data.Function (on)
