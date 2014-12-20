@@ -80,20 +80,15 @@ module Negamark where
   firstPass board | otherwise =
       Heuristic (movesSoFar board) (heuristicValue board)
 
-  firstPassIO :: (NegamarkGameState a, TranspositionTable b) => a -> b -> IO(Outcome)
-  firstPassIO board table = do
-    if findWinner board == activePlayer board
-        then return (Win (movesSoFar board))
-        else if findWinner board == otherPlayer (activePlayer board)
-             then return (Loss (movesSoFar board))
-             else if null (allLegalMoves board)
-                 then return (Stalemate (movesSoFar board))
-                 else do fromCache <- getOutcome table (uniqueID board)
---                         putStrLn ("It came back " ++ show (fromCache))
-                         return (fromMaybe (Heuristic (movesSoFar board) (heuristicValue board)) fromCache)
---                         if fromCache /= Nothing
---                             then return (fromJust fromCache)
---                             else return (Outcome Heuristic (movesSoFar board) (heuristicValue board))
+  firstPassIO :: (NegamarkGameState a, TranspositionTable b) =>
+                 a -> b -> IO(Outcome)
+  firstPassIO board table =
+    let pureFP = firstPass board
+        queryResult = getOutcome table (uniqueID board)
+        fromTable = liftM (fromMaybe pureFP) queryResult
+-- We only look at the table if the pure firstPass returns a Heuristic.
+    in case pureFP of (Heuristic _ _) -> fromTable
+                      otherwise       -> return pureFP
 
   negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
                (Outcome, [a])
