@@ -1,4 +1,5 @@
 module Negamark where
+  import Control.Monad (liftM)
   import Data.List (sortBy)
   import Data.Function (on)
   import Data.List.Ordered (nubSortBy)
@@ -195,15 +196,13 @@ module Negamark where
 
   proveIsLossIO :: (NegamarkGameState a, TranspositionTable t) =>
                    a -> Int -> t -> IO Outcome
-  proveIsLossIO board depth table = do
-      (outcome, _) <- negamarkIO board depth (Loss 1000) (Loss 1001) table
-      return outcome
+  proveIsLossIO board depth table =
+      liftM fst $ negamarkIO board depth (Loss 1000) (Loss 1001) table
 
   proveIsWinIO :: (NegamarkGameState a, TranspositionTable t) =>
                    a -> Int -> t -> IO Outcome
-  proveIsWinIO board depth table = do
-      (outcome, _) <- negamarkIO board depth (Win 1001) (Win 1000) table
-      return outcome
+  proveIsWinIO board depth table =
+      liftM fst $ negamarkIO board depth (Win 1001) (Win 1000) table
 
   pickMoveIO :: (NegamarkGameState a, TranspositionTable t) => a -> Int -> t -> IO(Outcome, [a])
   pickMoveIO board depth table
