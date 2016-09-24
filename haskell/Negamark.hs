@@ -2,7 +2,6 @@ module Negamark where
   import Control.Monad (liftM)
   import Data.List (sortBy)
   import Data.Function (on)
-  import Data.List.Ordered (nubSortBy)
   import Data.Maybe
   import Data.Ord (comparing)
   import Debug.Trace
@@ -65,10 +64,10 @@ module Negamark where
     summary :: gameState -> [Char]
     uniqueID :: gameState -> Integer
 
-  boardsAfter :: NegamarkGameState a => a -> Int -> [a]
-  boardsAfter board 0     = [board]
+--  boardsAfter :: NegamarkGameState a => a -> Int -> [a]
+--  boardsAfter board 0     = [board]
 --  boardsAfter board depth = nubBy (\x y -> uniqueID x == uniqueID y) (concat (map allLegalMoves (boardsAfter board (depth - 1))))
-  boardsAfter board depth = nubSortBy (comparing uniqueID) $ concat (map allLegalMoves (boardsAfter board (depth - 1)))
+--  boardsAfter board depth = nubSortBy (comparing uniqueID) $ concat (map allLegalMoves (boardsAfter board (depth - 1)))
 
   firstPass :: NegamarkGameState a => a -> Outcome
   firstPass board | findWinner board == activePlayer board =
@@ -222,18 +221,18 @@ module Negamark where
             return ending
 
   playGameIO :: (NegamarkGameState a, TranspositionTable t) => a -> t -> IO SquareState
-  playGameIO board table | length (allLegalMoves board) == 0 = do {return SquareOpen}
-                         | findWinner board /= SquareOpen    = do
-                               return (findWinner board)
-                         | activePlayer board == X           = do
-                               result <- pickMoveIO board 10 table
-                               putStrLn ("The best you can do is " ++ show (fst result))
-                               ending <- playGameIO (head (snd result)) table
-                               return ending
-                         | otherwise = do
-                               nextMove <- getHumanMove board
-                               ending <- playGameIO nextMove table
-                               return ending
+  playGameIO board table
+    | length (allLegalMoves board) == 0 = return SquareOpen
+    | findWinner board /= SquareOpen    = return (findWinner board)
+    | activePlayer board == X           = do
+        result <- pickMoveIO board 10 table
+        putStrLn ("The best you can do is " ++ show (fst result))
+        ending <- playGameIO (head (snd result)) table
+        return ending
+    | otherwise = do
+        nextMove <- getHumanMove board
+        ending <- playGameIO nextMove table
+        return ending
 
   class TranspositionTable table where
     getOutcome :: table -> Integer -> IO (Maybe Outcome)
