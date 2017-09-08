@@ -3,7 +3,7 @@
 --fetch stmt
 --getFieldValue stmt "value"
 
-module HSQLMySQLTranspositionTableModule where
+module HSQLMySQLTranspositionTable where
   import Control.Exception
   import Database.HSQL.MySQL
   import Negamark
