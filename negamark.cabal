@@ -15,10 +15,10 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
-library
-  hs-source-dirs:      src
-  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3
-  exposed-modules:     Negamark, HSQLMySQLTranspositionTable
+--library
+--  hs-source-dirs:      src
+--  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3
+--  exposed-modules:     Negamark, HSQLMySQLTranspositionTable
 
 --test-suite TestNegamark
 --  main-is:             TestNegamark.hs
@@ -29,5 +29,5 @@ library
 executable prove-em-all-mysql
   main-is:             prove-em-all-mysql.hs
   hs-source-dirs:      src
-  build-depends:       base >=4.8 && <4.9, Negamark
+  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array
 
