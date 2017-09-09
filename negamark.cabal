@@ -3,22 +3,15 @@
 
 name:                Negamark
 version:             0.1.0.0
--- synopsis:            
--- description:         
--- license:             
-license-file:        LICENSE
 author:              mark on github
 maintainer:          markongithub@users.noreply.github.com
--- copyright:           
--- category:            
 build-type:          Simple
--- extra-source-files:  
-cabal-version:       >=1.10
+cabal-version:       >=1.2
 
---library
---  hs-source-dirs:      src
---  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3
---  exposed-modules:     Negamark, HSQLMySQLTranspositionTable
+library
+  hs-source-dirs:      src
+  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array
+  exposed-modules:     Negamark, HSQLMySQLTranspositionTable
 
 --test-suite TestNegamark
 --  main-is:             TestNegamark.hs
@@ -29,5 +22,6 @@ cabal-version:       >=1.10
 executable prove-em-all-mysql
   main-is:             prove-em-all-mysql.hs
   hs-source-dirs:      src
+  -- It is dumb that I have to repeat this every time.
   build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array
 
