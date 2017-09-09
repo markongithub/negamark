@@ -8,7 +8,7 @@ module HSQLMySQLTranspositionTable where
   import Database.HSQL.MySQL
   import Negamark
 
-  type SQL = String
+  type SQLQuery = String
 
   instance TranspositionTable HSQLMySQLTranspositionTable where
     getOutcome table state = getOutcomeMySQL table state
@@ -53,7 +53,7 @@ module HSQLMySQLTranspositionTable where
                                            show heuristic)
   sqlValues (Win depth)                 = ("'Win'", show depth, "NULL")
 
-  insertQueryText :: Integer -> Outcome -> SQL
+  insertQueryText :: Integer -> Outcome -> SQLQuery
   insertQueryText state outcome =
       "REPLACE INTO transposition (state, value, depth, heuristic) VALUES (" ++
       show(state) ++ ", " ++ valueCode ++ ", " ++ depth ++ ", " ++ heuristic ++ 
