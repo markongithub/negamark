@@ -6,28 +6,33 @@ version:             0.1.0.0
 author:              mark on github
 maintainer:          markongithub@users.noreply.github.com
 build-type:          Simple
-cabal-version:       >=1.8
+cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array
+  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array, cmdargs
   exposed-modules:     Negamark, ProductGame, TicTacToe, HSQLMySQLTranspositionTable
+  default-extensions:   DeriveDataTypeable
+  default-language:    Haskell98
 
 test-suite TestNegamark
   main-is:             NegamarkTest.hs
   hs-source-dirs:      test
   type:                exitcode-stdio-1.0
   build-depends:       base >=4.8 && <4.9, Negamark, HUnit
+  default-language:    Haskell98
 
 test-suite TestProductGame
   main-is:             ProductGameTest.hs
   hs-source-dirs:      test
   type:                exitcode-stdio-1.0
   build-depends:       base >=4.8 && <4.9, Negamark, HUnit
+  default-language:    Haskell98
 
 executable prove-em-all-mysql
   main-is:             prove-em-all-mysql.hs
   hs-source-dirs:      src
   -- It is dumb that I have to repeat this every time.
   build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array
+  default-language:    Haskell98
 

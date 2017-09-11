@@ -5,8 +5,10 @@
 
 module HSQLMySQLTranspositionTable where
   import Control.Exception
+  import Data.Data (Data) -- Data
   import Database.HSQL.MySQL
   import Negamark
+  import System.Console.CmdArgs.Implicit (cmdArgs, def, name, (&=))
 
   type SQLQuery = String
 
@@ -19,6 +21,22 @@ module HSQLMySQLTranspositionTable where
       { connMySQL              :: Connection
       , maxMoveMySQL           :: Int
       }
+
+  data MySQLConnectionFlags = MySQLConnectionFlags {
+       mysql_address :: String
+     , mysql_database :: String
+     , mysql_username :: String
+     , mysql_password :: String } deriving (Data, Show)
+
+  connectionFromFlags :: IO Connection
+  connectionFromFlags = do
+    flags <- cmdArgs MySQLConnectionFlags {
+        mysql_address = def &= name "mysql_address"
+      , mysql_database = def &= name "mysql_database"
+      , mysql_username = def &= name "mysql_username"
+      , mysql_password = def &= name "mysql_password" }
+    let (MySQLConnectionFlags addr db username password) = flags
+    connect addr db username password
 
   outcomeFromRecord :: String -> MoveNumber -> HeuristicValue -> Outcome
   outcomeFromRecord value depth heuristic
