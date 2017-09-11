@@ -7,8 +7,8 @@ module HSQLMySQLTranspositionTable where
   import Control.Exception
   import Data.Data (Data) -- Data
   import Database.HSQL.MySQL
-  import Negamark
-  import System.Console.CmdArgs.Implicit (cmdArgs, def, name, (&=))
+  import Negamark hiding (summary)
+  import System.Console.CmdArgs.Implicit--  (cmdArgs, def, explicit, name, opt, help, summary, typFile, (&=))
 
   type SQLQuery = String
 
@@ -22,15 +22,20 @@ module HSQLMySQLTranspositionTable where
       , maxMoveMySQL           :: Int
       }
 
-  data MySQLConnectionFlags = MySQLConnectionFlags String String String String deriving (Data, Show)
+  data MySQLConnectionFlags = MySQLConnectionFlags {
+      mysql_address :: String
+    , mysql_database :: String
+    , mysql_username :: String
+    , mysql_password :: String } deriving (Data, Show)
 
   connectionFromFlags :: IO Connection
   connectionFromFlags = do
-    flags <- cmdArgs $ MySQLConnectionFlags
-      (def &= name "mysql_address")
-      (def &= name "mysql_database")
-      (def &= name "mysql_username")
-      (def &= name "mysql_password")
+    let caVal = MySQLConnectionFlags
+                  ("" &= name "mysql_address" &= help "address of the mysql server" &= explicit)
+                  ("productgame" &= name "mysql_database" &= help "database in which table is stored" &= explicit) 
+                  ("productgame" &= name "mysql_username" &= help "username with which to authenticate" &= explicit)
+                  ("" &= name "mysql_password" &= help "password with which to authenticate" &= explicit)
+    flags <- cmdArgs caVal
     let (MySQLConnectionFlags addr db username password) = flags
     connect addr db username password
 
