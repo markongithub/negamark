@@ -33,6 +33,7 @@ executable prove-em-all-mysql
   main-is:             prove-em-all-mysql.hs
   hs-source-dirs:      src
   -- It is dumb that I have to repeat this every time.
-  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array
+  build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array, cmdargs
+  default-extensions:   DeriveDataTypeable
   default-language:    Haskell98
 

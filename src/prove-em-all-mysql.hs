@@ -5,7 +5,7 @@ module Main where
   import ProductGame
 
   main = do
-    conn <- connect "localhost" "productgame" "productgame" "passwordsarestupid"
+    conn <- connectionFromFlags
     let table = HSQLMySQLTranspositionTable conn 8
         proofs = [
           proveIsLossIO (newProductGameStateFromMoveSet newProductGame [(4,7)]) 18 table
