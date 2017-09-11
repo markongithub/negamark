@@ -22,19 +22,15 @@ module HSQLMySQLTranspositionTable where
       , maxMoveMySQL           :: Int
       }
 
-  data MySQLConnectionFlags = MySQLConnectionFlags {
-       mysql_address :: String
-     , mysql_database :: String
-     , mysql_username :: String
-     , mysql_password :: String } deriving (Data, Show)
+  data MySQLConnectionFlags = MySQLConnectionFlags String String String String deriving (Data, Show)
 
   connectionFromFlags :: IO Connection
   connectionFromFlags = do
-    flags <- cmdArgs MySQLConnectionFlags {
-        mysql_address = def &= name "mysql_address"
-      , mysql_database = def &= name "mysql_database"
-      , mysql_username = def &= name "mysql_username"
-      , mysql_password = def &= name "mysql_password" }
+    flags <- cmdArgs $ MySQLConnectionFlags
+      (def &= name "mysql_address")
+      (def &= name "mysql_database")
+      (def &= name "mysql_username")
+      (def &= name "mysql_password")
     let (MySQLConnectionFlags addr db username password) = flags
     connect addr db username password
 
