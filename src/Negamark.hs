@@ -205,10 +205,13 @@ module Negamark where
       | player == O && autoO = True
       | otherwise            = False
 
-  playGame :: NegamarkGameState a => a -> Bool -> Bool -> Int -> IO SquareState
+  playGame :: (NegamarkGameState a, Show a) => a -> Bool -> Bool -> Int -> IO SquareState
   playGame board autoX autoO strength
-      | length (allLegalMoves board) == 0 = do {return SquareOpen}
+      | length (allLegalMoves board) == 0 = do
+            putStrLn (show board)
+            return SquareOpen
       | findWinner board /= SquareOpen    = do
+            putStrLn (show board)
             return (findWinner board)
       | isAutomated (activePlayer board) autoX autoO = do
             let result = pickMove board strength
@@ -220,18 +223,22 @@ module Negamark where
             ending <- playGame nextMove autoX autoO strength
             return ending
 
-  playGameIO :: (NegamarkGameState a, TranspositionTable t) => a -> t -> IO SquareState
-  playGameIO board table
-    | length (allLegalMoves board) == 0 = return SquareOpen
-    | findWinner board /= SquareOpen    = return (findWinner board)
-    | activePlayer board == X           = do
-        result <- pickMoveIO board 10 table
+  playGameIO :: (NegamarkGameState a, Show a, TranspositionTable t) => a -> Bool -> Bool -> Int -> t -> IO SquareState
+  playGameIO board autoX autoO strength table
+    | length (allLegalMoves board) == 0 = do
+        putStrLn (show board)
+        return SquareOpen
+    | findWinner board /= SquareOpen    = do
+        putStrLn (show board)
+        return (findWinner board)
+    | isAutomated (activePlayer board) autoX autoO = do
+        result <- pickMoveIO board strength table
         putStrLn ("The best you can do is " ++ show (fst result))
-        ending <- playGameIO (head (snd result)) table
+        ending <- playGameIO (head (snd result)) autoX autoO strength table
         return ending
     | otherwise = do
         nextMove <- getHumanMove board
-        ending <- playGameIO nextMove table
+        ending <- playGameIO nextMove autoX autoO strength table
         return ending
 
   class TranspositionTable table where
