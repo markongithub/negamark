@@ -2,6 +2,7 @@ module Negamark where
   import Control.Monad (liftM)
   import Data.List (sortBy)
   import Data.Function (on)
+  import qualified Data.Map as Map
   import Data.Maybe
   import Data.Ord (comparing)
   import Debug.Trace
@@ -89,30 +90,38 @@ module Negamark where
     in case pureFP of (Heuristic _ _) -> fromTable
                       otherwise       -> return pureFP
 
-  negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
-               (Outcome, [a])
+  -- type TranspositionMap = Map.Map Integer Outcome
+  data NegamarkResult a = NegamarkResult {
+      resultOutcome :: Outcome
+    , resultMoves   :: [a]
+    }
+
+  negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome -> -- TranspositionMap ->
+              NegamarkResult a
   negamark board depth alpha beta | traceNegamark board depth alpha beta False = undefined
-  negamark board 0     alpha beta = (firstPass board, [board])
-  negamark board depth alpha beta | isAuthoritative (firstPass board) (movesSoFar board + depth) = (firstPass board, [board])
-  negamark board depth alpha beta | otherwise =
-      (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
+  negamark board depth alpha beta
+    | depth == 0 = justFirstPass
+    | isAuthoritative (firstPass board) (movesSoFar board + depth) = justFirstPass
+    | otherwise =
+      NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome))
       where recursiveOutcome =
                    negamarkRecurse depth alpha beta (sortMovesByFirstPass (allLegalMoves board))
+            justFirstPass = NegamarkResult (firstPass board) [board]
 
   negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int ->
-                Outcome -> Outcome -> t -> IO(Outcome, [a])
+                Outcome -> Outcome -> t -> IO(NegamarkResult a)
   negamarkIO board depth alpha beta table | traceNegamark board depth alpha beta False = undefined
   negamarkIO board depth alpha beta table = do
       fp <- firstPassIO board table
       if depth == 0
-        then return (fp, [board])
+        then return $ NegamarkResult fp [board]
         else if (isAuthoritative fp (movesSoFar board + depth))
-          then return (fp, [board])
+          then return $ NegamarkResult fp [board]
           else do
             sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
             recursiveOutcome <- negamarkRecurseIO depth alpha beta sortedMoves table
-            saveOutcome table (uniqueID board) (opposite(fst recursiveOutcome))
-            return (opposite(fst recursiveOutcome), (board:(snd recursiveOutcome)))
+            saveOutcome table (uniqueID board) (opposite(resultOutcome recursiveOutcome))
+            return $ NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome))
 
   sortMovesByFirstPass :: NegamarkGameState a => [a] -> [a]
   sortMovesByFirstPass boards =
@@ -130,7 +139,7 @@ module Negamark where
                             " a " ++  show alpha ++ " b " ++ show beta) foo
 
   negamarkRecurse :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] ->
-                                            (Outcome, [a])
+                                            NegamarkResult a
   negamarkRecurse depth alpha beta [] = error "maximum of empty list"
   negamarkRecurse depth alpha beta (x:xs)
 --     | trace ("nmr d " ++ show depth ++ " " ++ summary x ++ " a " ++ show alpha ++ " b " ++ show beta ++ " with " ++ show (length xs) ++ " more to go") False = undefined
@@ -141,42 +150,42 @@ module Negamark where
       | newAlpha >= beta                  = xOutcome
 --      | trace "We did not prune. Now we may return xOutcome." False = undefined
 --      | value (opposite(fst xOutcome)) == Win    = xOutcome
-      | opposite(fst xOutcome) >= opposite(fst tailResult)    = xOutcome
+      | opposite(resultOutcome xOutcome) >= opposite(resultOutcome tailResult)    = xOutcome
 --      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show newAlpha ++ " x " ++ show x ++ " returning tailResult because " ++ show (fst tailResult) ++ " is worse for the other guy than is " ++ show (fst xOutcome)) False = undefined
       | otherwise                         = tailResult
       where xOutcome =
              (negamark x (depth - 1) (opposite beta) (opposite alpha))
             tailResult =
              (negamarkRecurse depth newAlpha beta xs)
-            newAlpha = max alpha (opposite (fst xOutcome))
+            newAlpha = max alpha (opposite (resultOutcome xOutcome))
 
   negamarkRecurseIO :: (NegamarkGameState a, TranspositionTable t) => Int ->
-                       Outcome -> Outcome -> [a] -> t -> IO(Outcome, [a])
+                       Outcome -> Outcome -> [a] -> t -> IO(NegamarkResult a)
   negamarkRecurseIO depth alpha beta (x:xs) table = do
     if movesSoFar x >= maxMove table
       then do
         return (negamarkRecurse depth alpha beta (x:xs))
       else do
         xOutcome <- negamarkIO x (depth - 1) (opposite beta) (opposite alpha) table
-        let newAlpha = max alpha (opposite (fst xOutcome))
+        let newAlpha = max alpha (opposite (resultOutcome xOutcome))
         if (length xs == 0) || (newAlpha >= beta)
           then return xOutcome
           else do tailResult <- negamarkRecurseIO depth newAlpha beta xs table
-                  if opposite(fst xOutcome) >= opposite(fst tailResult)
+                  if opposite(resultOutcome xOutcome) >= opposite(resultOutcome tailResult)
                     then return xOutcome
                     else return tailResult
 
-  negamarkSimple :: NegamarkGameState a => a -> Int -> (Outcome, [a])
+  negamarkSimple :: NegamarkGameState a => a -> Int -> NegamarkResult a
   negamarkSimple board depth =
       negamark board depth (Loss 0) (Win 0)
 
   proveIsLoss :: NegamarkGameState a => a -> Int -> Outcome
-  proveIsLoss board depth = fst (negamark board depth (Loss 1000) (Loss 1001))
+  proveIsLoss board depth = resultOutcome (negamark board depth (Loss 1000) (Loss 1001))
 
   proveIsWin :: NegamarkGameState a => a -> Int -> Outcome
-  proveIsWin board depth = fst (negamark board depth (Win 1001) (Win 1000))
+  proveIsWin board depth = resultOutcome (negamark board depth (Win 1001) (Win 1000))
 
-  pickMove :: NegamarkGameState a => a -> Int -> (Outcome, [a])
+  pickMove :: NegamarkGameState a => a -> Int -> NegamarkResult a
   pickMove board depth = result
       where result = (negamarkRecurse depth (Loss 37)
                       (Win 36) (sortMovesByFirstPass (allLegalMoves board)))
@@ -184,15 +193,15 @@ module Negamark where
   proveIsLossIO :: (NegamarkGameState a, TranspositionTable t) =>
                    a -> Int -> t -> IO Outcome
   proveIsLossIO board depth table =
-      liftM fst $ negamarkIO board depth (Loss 1000) (Loss 1001) table
+      liftM resultOutcome $ negamarkIO board depth (Loss 1000) (Loss 1001) table
 
   proveIsWinIO :: (NegamarkGameState a, TranspositionTable t) =>
                    a -> Int -> t -> IO Outcome
   proveIsWinIO board depth table =
-      liftM fst $ negamarkIO board depth (Win 1001) (Win 1000) table
+      liftM resultOutcome $ negamarkIO board depth (Win 1001) (Win 1000) table
 
   pickMoveIO :: (NegamarkGameState a, TranspositionTable t) =>
-                a -> Int -> t -> IO(Outcome, [a])
+                a -> Int -> t -> IO(NegamarkResult a)
   pickMoveIO board depth table
     | movesSoFar board >= maxMove table = return (pickMove board depth)
     | otherwise  = do
@@ -215,8 +224,8 @@ module Negamark where
             return (findWinner board)
       | isAutomated (activePlayer board) autoX autoO = do
             let result = pickMove board strength
-            putStrLn ("The best you can do is " ++ show (fst result))
-            ending <- playGame (head (snd result)) autoX autoO strength
+            putStrLn ("The best you can do is " ++ show (resultOutcome result))
+            ending <- playGame (head (resultMoves result)) autoX autoO strength
             return ending
       | otherwise = do
             nextMove <- getHumanMove board
@@ -233,8 +242,8 @@ module Negamark where
         return (findWinner board)
     | isAutomated (activePlayer board) autoX autoO = do
         result <- pickMoveIO board strength table
-        putStrLn ("The best you can do is " ++ show (fst result))
-        ending <- playGameIO (head (snd result)) autoX autoO strength table
+        putStrLn ("The best you can do is " ++ show (resultOutcome result))
+        ending <- playGameIO (head (resultMoves result)) autoX autoO strength table
         return ending
     | otherwise = do
         nextMove <- getHumanMove board
@@ -254,4 +263,3 @@ module Negamark where
     saveOutcome nullTable state outcome = do
       return ()
     maxMove nullTable = 0
-

@@ -330,7 +330,7 @@ module ProductGame where
   nineNine = foldr newProductGameStateFromMove newProductGame (reverse [(9,9)])
   nineNineNew = newProductGameStateFromMoveSet newProductGame [(9,9)]
 
-  turningPoint = (iterate (\x -> head (snd (pickMove x 3))) newProductGame) !! 20
+  turningPoint = (iterate (\x -> head (resultMoves (pickMove x 3))) newProductGame) !! 20
 
   bugGame = newProductGameStateFromMoveSet newProductGame [(1,9), (2,9), (1,2), (2,8), (1,8), (4,8), (4,5), (2,5), (5,6), (5,9), (7,9), (4,7), (1,7), (1,5), (1,1), (1,4), (1,6)]
   -- In this situation O should go to 1,3 for a win at 20!
