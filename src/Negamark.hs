@@ -90,23 +90,29 @@ module Negamark where
     in case pureFP of (Heuristic _ _) -> fromTable
                       otherwise       -> return pureFP
 
-  -- type TranspositionMap = Map.Map Integer Outcome
+  type TranspositionMap = Map.Map Integer Outcome
+  noMap = Map.empty
+
   data NegamarkResult a = NegamarkResult {
       resultOutcome :: Outcome
     , resultMoves   :: [a]
+    , resultMap     :: TranspositionMap
     }
 
-  negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome -> -- TranspositionMap ->
+  storeTransposition :: (NegamarkGameState a) => TranspositionMap -> Outcome -> a -> TranspositionMap
+  storeTransposition tMap o board = Map.insert (uniqueID board) o tMap
+
+  negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
               NegamarkResult a
   negamark board depth alpha beta | traceNegamark board depth alpha beta False = undefined
   negamark board depth alpha beta
     | depth == 0 = justFirstPass
     | isAuthoritative (firstPass board) (movesSoFar board + depth) = justFirstPass
     | otherwise =
-      NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome))
+      NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome)) noMap
       where recursiveOutcome =
                    negamarkRecurse depth alpha beta (sortMovesByFirstPass (allLegalMoves board))
-            justFirstPass = NegamarkResult (firstPass board) [board]
+            justFirstPass = NegamarkResult (firstPass board) [board] noMap
 
   negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int ->
                 Outcome -> Outcome -> t -> IO(NegamarkResult a)
@@ -114,14 +120,14 @@ module Negamark where
   negamarkIO board depth alpha beta table = do
       fp <- firstPassIO board table
       if depth == 0
-        then return $ NegamarkResult fp [board]
+        then return $ NegamarkResult fp [board] noMap
         else if (isAuthoritative fp (movesSoFar board + depth))
-          then return $ NegamarkResult fp [board]
+          then return $ NegamarkResult fp [board] noMap
           else do
             sortedMoves <- sortMovesByFirstPassIO (allLegalMoves board) table
             recursiveOutcome <- negamarkRecurseIO depth alpha beta sortedMoves table
             saveOutcome table (uniqueID board) (opposite(resultOutcome recursiveOutcome))
-            return $ NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome))
+            return $ NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome)) noMap
 
   sortMovesByFirstPass :: NegamarkGameState a => [a] -> [a]
   sortMovesByFirstPass boards =
