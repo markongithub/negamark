@@ -31,7 +31,7 @@ tests = TestList [
   , TestCase (assertEqual "" 54 (length allWinningTetrads))
   , TestCase (assertEqual "" X (findWinner xHasWon))
   , TestCase (assertEqual "" (Loss 7)
-                          (fst (negamarkSimple xHasWon 0)))
+                          (resultOutcome (negamarkSimple xHasWon 0)))
   , TestCase (assertEqual "" 0  (factorID (1,1)))
   , TestCase (assertEqual "" 80 (factorID (9,9)))
   , TestCase (assertEqual "" (2 * 81) -- 81 + 0 + 0

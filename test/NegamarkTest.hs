@@ -39,27 +39,27 @@ tests = TestList [
     TestCase (assertEqual "13" (Loss 5)
               (firstPass winningBoard)),
     TestCase (assertEqual "14" (Loss 5)
-              (fst (negamark winningBoard 0 (Loss 0) (Win 0)))),
+              (resultOutcome (negamark winningBoard 0 (Loss 0) (Win 0)))),
     TestCase (assertEqual "15" (Heuristic 4 0)
               (firstPass testBoard)),
     TestCase (assertEqual "16" (Win 5)
-              (fst (negamark testBoard 6 (Loss 0) (Win 0)))),
+              (resultOutcome (negamark testBoard 6 (Loss 0) (Win 0)))),
     TestCase (assertEqual "whatever" (Win 5)
-              (fst (negamark testBoard 6 (Loss 0) (Win 0)))),
+              (resultOutcome (negamark testBoard 6 (Loss 0) (Win 0)))),
     TestCase (assertEqual "whatever" (Loss 7)
-              (fst (negamark xIsGonnaWin 4 (Loss 0) (Win 0)))),
+              (resultOutcome (negamark xIsGonnaWin 4 (Loss 0) (Win 0)))),
     TestCase (assertEqual "whatever" (Loss 9)
-              (fst (negamark xWinsOnLastTurn 0 (Loss 0)(Win 0)))),
+              (resultOutcome (negamark xWinsOnLastTurn 0 (Loss 0)(Win 0)))),
     TestCase (assertEqual "whatevz" [2, 5, 6, 7, 8] (availableMoves testBoard)),
     TestCase (assertEqual "nsimple on xcanwinnow" (Win 5)
-              (fst (negamarkSimple xCanWinNow 5))),
+              (resultOutcome (negamarkSimple xCanWinNow 5))),
     TestCase (assertEqual "whatever" X
-              (squareState (head (snd (pickMove xCanWinNow 5))) 5)),
+              (squareState (head (resultMoves (pickMove xCanWinNow 5))) 5)),
     TestCase (assertEqual "whatevz" 5 (length(allLegalMoves testBoard))),
     TestCase (assertEqual "X let O win" (Win 6)
-              (fst (negamarkSimple xLetOWin 9))),
+              (resultOutcome (negamarkSimple xLetOWin 9))),
     TestCase (assertEqual "whatever" X
-              (squareState (head (snd (pickMove xCouldLose 5))) 2)),
+              (squareState (head (resultMoves (pickMove xCouldLose 5))) 2)),
     TestCase (assertEqual "I leave this one at the bottom" 1 1)
     ]
 
