@@ -29,8 +29,8 @@ test-suite TestProductGame
   build-depends:       base >=4.8 && <4.9, Negamark, HUnit
   default-language:    Haskell98
 
-executable prove-em-all-mysql
-  main-is:             prove-em-all-mysql.hs
+executable GenerateTranspositionsMySQL
+  main-is:             GenerateTranspositionsMySQL.hs
   hs-source-dirs:      src
   -- It is dumb that I have to repeat this every time.
   build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array, cmdargs
