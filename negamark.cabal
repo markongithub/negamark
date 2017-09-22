@@ -14,6 +14,7 @@ library
   exposed-modules:     Negamark, ProductGame, TicTacToe, HSQLMySQLTranspositionTable
   default-extensions:   DeriveDataTypeable
   default-language:    Haskell98
+  ghc-options:         -fwarn-unused-imports
 
 test-suite TestNegamark
   main-is:             NegamarkTest.hs
@@ -21,6 +22,7 @@ test-suite TestNegamark
   type:                exitcode-stdio-1.0
   build-depends:       base >=4.8 && <4.9, Negamark, HUnit
   default-language:    Haskell98
+  ghc-options:         -fwarn-unused-imports
 
 test-suite TestProductGame
   main-is:             ProductGameTest.hs
@@ -28,6 +30,7 @@ test-suite TestProductGame
   type:                exitcode-stdio-1.0
   build-depends:       base >=4.8 && <4.9, Negamark, HUnit
   default-language:    Haskell98
+  ghc-options:         -fwarn-unused-imports
 
 executable GenerateTranspositionsMySQL
   main-is:             GenerateTranspositionsMySQL.hs
@@ -36,6 +39,7 @@ executable GenerateTranspositionsMySQL
   build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array, cmdargs
   default-extensions:   DeriveDataTypeable
   default-language:    Haskell98
+  ghc-options:         -fwarn-unused-imports
 
 executable PlayPerfectlyMySQL
   main-is:             PlayPerfectlyMySQL.hs
@@ -44,3 +48,4 @@ executable PlayPerfectlyMySQL
   build-depends:       base >=4.8 && <4.9, hsql-mysql < 1.8.3, containers, array, cmdargs
   default-extensions:   DeriveDataTypeable
   default-language:    Haskell98
+  ghc-options:         -fwarn-unused-imports

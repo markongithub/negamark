@@ -1,5 +1,4 @@
 module Main where
-  import Database.HSQL.MySQL
   import HSQLMySQLTranspositionTable
   import Negamark
   import ProductGame

@@ -4,7 +4,7 @@ module Negamark where
   import Data.Function (on)
   import qualified Data.Map as Map
   import Data.Maybe
-  import Data.Ord (comparing)
+--  for boardsAfter -- import Data.Ord (comparing)
   import Debug.Trace
 
   type MoveNumber = Int
@@ -30,7 +30,6 @@ module Negamark where
   instance Ord Outcome where
     compare (Win d1) (Win d2) = compare d2 d1
     compare (Win d1) whatever = GT
-    compare (Heuristic _ _) (Win _) = LT
     compare (Heuristic d1 h1) (Heuristic d2 h2)
       | h1 /= h2  = compare h1 h2
       | otherwise = compare d1 d2

@@ -2,7 +2,6 @@ import Negamark
 import System.Exit
 import TicTacToe
 import Test.HUnit
-import Data.Maybe
 
 testBoard = foldr newTicTacToeStateFromMove newTicTacToeBoard [1,4,0,3]
 winningBoard = foldr newTicTacToeStateFromMove newTicTacToeBoard [5,1,4,0,3]

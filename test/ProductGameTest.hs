@@ -1,7 +1,6 @@
 import Negamark
 import ProductGame
 import Test.HUnit
-import Data.Maybe
 
 fourSquare = foldr newProductGameStateFromMove newProductGame [(4,4)]
 xCanWin = foldr newProductGameStateFromMove newProductGame [

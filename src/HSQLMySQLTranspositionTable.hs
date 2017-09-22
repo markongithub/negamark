@@ -4,8 +4,6 @@
 --getFieldValue stmt "value"
 
 module HSQLMySQLTranspositionTable where
-  import Control.Exception
-  import Data.Data (Data) -- Data
   import Database.HSQL.MySQL
   import Negamark hiding (summary)
   import System.Console.CmdArgs.Implicit--  (cmdArgs, def, explicit, name, opt, help, summary, typFile, (&=))
