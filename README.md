@@ -8,9 +8,11 @@ TL;DR X always wins if she plays optimally.
 
 It's a big more complicated than that. In the version of the game we learned originally, the first player opens by choosing two factors and claiming the square labeled with their product on the board. For example, X could choose 6 and 8, and place an X on 48. This version of the game is [first-player win](https://en.wikipedia.org/wiki/First-player_and_second-player_win). By making an optimal first move, X can win no later than on her 10th move, the 19th move overall.
 
-In the version of the game documented on the National Council of Teachers of Mathematics web site, the first player chooses one factor. The second player then chooses another factor, and claims the square associated with their product. So the second player to move is the first player to claim a square on the board. For our purposes, in keeping with the norms of Tic-Tac-Toe, we refer to this second player as "X". As an example, O could pick the factor 4, then X could pick the factor 5, and place an X on 20.
+In the version of the game [documented on the National Council of Teachers of Mathematics web site](http://illuminations.nctm.org/activity.aspx?id=4213), the first player chooses one factor. The second player then chooses another factor, and claims the square associated with their product. So the second player to move is the first player to claim a square on the board. For our purposes, in keeping with the norms of Tic-Tac-Toe, we refer to this second player as "X". As an example, O could pick the factor 4, then X could pick the factor 5, and place an X on 20.
 
 This slightly more complicated game is really second-player win, but in either case the winner is the first player to claim a square on the board. By choosing an opening factor, O can delay X's win until X's 13th move, the 25th move overall, but X will still ultimately win.
+
+The NCTM web site offers a computerized opponent, but will only play the "X" player. Its moves appear to be somewhat randomized rather than based on a pure strategic calculation.
 
 ## Installation and Play
 
@@ -42,4 +44,20 @@ Included in this repository is a [transposition table](https://en.wikipedia.org/
 6. Try to beat us in dog-eat-dog Product Game competition.
    ```
    negamark$ ./dist/build/PlayPerfectlyMySQL/PlayPerfectlyMySQL
+
+## Playing without a database.
+
+You can also have your computer calculate moves on the fly. The more deeply it calculates, the slower it will be. You will need to complete steps 1-3 above and then...
+
+4. Load up the libraries in the GHC interactive interpreter.
    ```
+   negamark$ cabal repl Negamark
+   *Negamark> import ProductGame
+   *Negamark ProductGame>  
+   ```
+
+5. Run the ```playGame``` function with a statement like this:
+   ```
+   *Negamark ProductGame> playGame modifiedProductGame True False 5
+   ```
+   All of these parameters are options you might wish to tweak. The first ```True``` states that you want the "X" player to be automated. The ```False``` states that you want the "O" player NOT to be automated. The human player will be promted for those moves. The trailing ```5``` is the depth to which the computer players will search before choosing moves. Lower numbers will be faster but result in poorer choices (and thus easier difficulty for human players).
