@@ -14,12 +14,16 @@ module TicTacToe where
     activePlayer board = activePlayerTTT board
     movesSoFar board = movesSoFarTTT board
     heuristicValue board = 0 -- in the ghetto... IN THE GHETTO...
-    uniqueID board = 0
+    uniqueID board = uniqueIDTTT board
     summary board = "whatever"
     findWinner board = findTicTacToeWinner board waysToWin
     allLegalMoves board = 
         map (\m -> newTicTacToeStateFromMove m board) (availableMoves board)
     getHumanMove board = getHumanTicTacToeMove board
+
+  squareDigit SquareOpen = 0
+  squareDigit X = 1
+  squareDigit O = 2
 
   squareState board i = (squares board)!i
   squareAvailable board i = squareState board i == SquareOpen
@@ -31,7 +35,11 @@ module TicTacToe where
   valueFromSquares board (i1, i2, i3) = let square = squares board
       in if square!i1 == square!i2 && square!i1 == square!i3 then square!i1
          else SquareOpen
-  
+
+  uniqueIDTTT board = let
+    valueForSquare i = (10 ^ (8 - i)) * (squareDigit $ squareState board i)
+    in sum $ map valueForSquare [0..8]
+
   findTicTacToeWinner ::
       TicTacToeBoardState -> [(Integer, Integer, Integer)] -> SquareState
   findTicTacToeWinner board [] = SquareOpen
