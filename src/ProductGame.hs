@@ -222,10 +222,15 @@ module ProductGame where
 
   squareUniqueID :: SquareXY -> SquareState -> Integer
   squareUniqueID coords player =
-      mult * 3 ^ ((6 * row) + col + 4)
-      where mult = fromIntegral (playerIndex (player) + 1)
+      mult * powerOfThree
+      where mult :: Integer
+            mult = fromIntegral (playerIndex (player) + 1)
             row = fromIntegral (fst coords)
             col = fromIntegral (snd coords)
+            exponentOfThree :: Integer
+            exponentOfThree = (6 * row) + col + 4
+            powerOfThree :: Integer
+            powerOfThree = 3 ^ exponentOfThree
 
   updateUniqueID :: ProductGameState -> FactorPair -> Integer
   updateUniqueID oldBoard (top, bottom) =
@@ -249,7 +254,7 @@ module ProductGame where
       | boardID <= 80 = (twoDArray height width SquareOpen, 
                           reverseTopBottomID boardID)
       | otherwise      = (nextSquares // [(row, nextSquares!row // [(col, reversePlayerIndex(thisDigit - 1))])], snd nextOne)
-      where currExp = floor (logBase 3 (fromIntegral(boardID)))
+      where currExp = floor (logBase 3 (fromIntegral(boardID) :: Double))
             thisDigit = fromIntegral(boardID `div` (3 ^ currExp))
             row = (currExp - 4) `div` 6
             col = (currExp - 4) `mod` 6
