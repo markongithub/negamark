@@ -10,11 +10,10 @@ xHasWon = foldr newProductGameStateFromMove newProductGame [
 buggyCase = foldr newProductGameStateFromMove newProductGame (reverse [
     (4,4), (2,4), (2,9), (1,9), (8,9), (3,9), (3,7), (1,7), (4,7), (6,7),
     (7,7), (7,8), (7,9), (7,2), (2,5), (2,3), (2,6)])
+principalVariation :: [(Integer, Integer)]
 principalVariation = reverse [
     (4,7), (1,7), (3,7), (1,3), (3,6), (1,6), (5,6), (1,5), (1,4), (4,5),
     (2,4), (4,9), (3,9), (3,3), (3,8), (4,8)]
-afterTwoMoves = foldr newProductGameStateFromMove newProductGame (reverse [
-    (1,1), (1,7)])
 allFactorPairs = [(x, y) | x <- [0..9], y <- [0..9], x<=y]
 
 tests = TestList [
@@ -37,12 +36,12 @@ tests = TestList [
                           (uniqueID (newProductGameStateFromMove (1,1)
                                      newProductGame)))
 -- (2 * (3^10)) + (1 * 3 ^ 4) + (1-1) + (7-1)
-  , TestCase (assertEqual "2 9" ((2 * (3^(14+4))) + (9 * (2-1)) + (9-1))
+  , TestCase (assertEqual "2 9" ((2 * (3^(14+4 :: Integer))) + (9 * (2-1)) + (9-1))
                           (uniqueID (newProductGameStateFromMove (2,9)
                                      newProductGame)))
 -- (1 * (3^(20+4)))
   , TestCase (assertEqual "squareun" 282429536481 (squareUniqueID (3,2) O))
-  , TestCase (assertEqual "" ((2 * (3^(19+4))) + (9 * (3-1)) + (9-1))
+  , TestCase (assertEqual "" ((2 * (3^(19+4 :: Integer))) + (9 * (3-1)) + (9-1))
                           (uniqueID (newProductGameStateFromMove (3,9)
                                      newProductGame)))
   , TestCase (assertEqual "" allFactorPairs (map (reverseTopBottomID . fromIntegral . factorID) allFactorPairs))
