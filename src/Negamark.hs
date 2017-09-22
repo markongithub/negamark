@@ -49,6 +49,7 @@ module Negamark where
                      deriving (Eq, Show)
   otherPlayer X = O
   otherPlayer O = X
+  otherPlayer _ = error "We called otherPlayer on a non-player."
 
   endingDescription :: SquareState -> [Char]
   endingDescription SquareOpen = "We'll call it a draw."
@@ -166,6 +167,7 @@ module Negamark where
 
   negamarkRecurseIO :: (NegamarkGameState a, TranspositionTable t) => Int ->
                        Outcome -> Outcome -> [a] -> t -> IO(NegamarkResult a)
+  negamarkRecurseIO depth alpha beta [] table = error "Maximum of empty list?"
   negamarkRecurseIO depth alpha beta (x:xs) table = do
     if movesSoFar x >= maxMove table
       then do
