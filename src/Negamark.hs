@@ -104,7 +104,7 @@ module Negamark where
 
   negamark :: NegamarkGameState a => a -> Int -> Outcome -> Outcome ->
               NegamarkResult a
-  negamark board depth alpha beta | traceNegamark board depth alpha beta False = undefined
+  negamark board depth alpha beta | traceNegamark board depth alpha beta "none" False = undefined
   negamark board depth alpha beta
     | depth == 0 = justFirstPass
     | isAuthoritative (firstPass board) (movesSoFar board + depth) = justFirstPass
@@ -116,7 +116,7 @@ module Negamark where
 
   negamarkIO :: (NegamarkGameState a, TranspositionTable t)  => a -> Int ->
                 Outcome -> Outcome -> t -> IO(NegamarkResult a)
-  negamarkIO board depth alpha beta table | traceNegamark board depth alpha beta False = undefined
+  negamarkIO board depth alpha beta table | traceNegamark board depth alpha beta "none" False = undefined
   negamarkIO board depth alpha beta table = do
       fp <- firstPassIO board table
       if depth == 0
@@ -139,10 +139,10 @@ module Negamark where
     outcomes <- sequence (map (\x -> firstPassIO x table) boards)
     return (map fst (sortBy (compare `on` snd) (zip boards outcomes)))
 
-  traceNegamark board depth alpha beta foo
-      | depth < 16  = foo
+  traceNegamark board depth alpha beta mapSize foo
+      | depth < 14  = foo
       | otherwise  = trace ("nm  d " ++ show depth ++ " " ++ summary board ++
-                            " a " ++  show alpha ++ " b " ++ show beta) foo
+                            " a " ++  show alpha ++ " b " ++ show beta ++ " ms " ++ mapSize) foo
 
   negamarkRecurse :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] ->
                                             NegamarkResult a
@@ -185,8 +185,15 @@ module Negamark where
   negamarkSimple board depth =
       negamark board depth (Loss 0) (Win 0)
 
+  negamarkSimple3 :: NegamarkGameState a => a -> Int -> NegamarkResult a
+  negamarkSimple3 board depth =
+      negamark3 board depth (Loss 0) (Win 0) noMap
+
   proveIsLoss :: NegamarkGameState a => a -> Int -> Outcome
   proveIsLoss board depth = resultOutcome (negamark board depth (Loss 1000) (Loss 1001))
+
+  proveIsLoss3 :: NegamarkGameState a => a -> Int -> Outcome
+  proveIsLoss3 board depth = resultOutcome (negamark3 board depth (Loss 1000) (Loss 1001) noMap)
 
   proveIsWin :: NegamarkGameState a => a -> Int -> Outcome
   proveIsWin board depth = resultOutcome (negamark board depth (Win 1001) (Win 1000))
@@ -269,3 +276,44 @@ module Negamark where
     saveOutcome nullTable state outcome = do
       return ()
     maxMove nullTable = 0
+
+  negamark3 :: NegamarkGameState a => a -> Int -> Outcome -> Outcome -> TranspositionMap ->
+               NegamarkResult a
+  negamark3 board depth alpha beta tMap | traceNegamark board depth alpha beta (show $ Map.size tMap) False = undefined
+  negamark3 board depth alpha beta tMap
+    | depth == 0 = justFirstPass
+    | isAuthoritative fp (movesSoFar board + depth) = justFirstPass
+    | otherwise =
+      NegamarkResult (opposite(resultOutcome recursiveOutcome)) (board:(resultMoves recursiveOutcome)) newMap
+      where fp = firstPass3 board tMap
+            recursiveOutcome =
+                   negamark3Iterate depth alpha beta (sortMovesByFirstPass (allLegalMoves board)) tMap
+            justFirstPass = NegamarkResult fp [board] (storeTransposition tMap fp board)
+            newMap = Map.union (resultMap recursiveOutcome) tMap
+
+  firstPass3 :: NegamarkGameState a => a -> TranspositionMap -> Outcome
+  firstPass3 board tMap = case Map.lookup (uniqueID board) tMap of
+    Just o -> o
+    _      -> firstPass board
+
+  negamark3Iterate :: NegamarkGameState a => Int -> Outcome -> Outcome -> [a] -> TranspositionMap ->
+                                            NegamarkResult a
+  negamark3Iterate depth alpha beta [] _ = error "maximum of empty list?"
+  negamark3Iterate depth alpha beta (x:xs) tMap
+--     | trace ("nm3i d " ++ show depth ++ " " ++ summary x ++ " a " ++ show alpha ++ " b " ++ show beta ++ " map " ++ show (Map.size tMap) ++ " with " ++ show (length xs) ++ " more to go") False = undefined
+--      | (alpha > beta) && (not $ isStalemate alpha) &&
+--        (not $ isStalemate beta)         = error ("alpha " ++ show alpha ++ " > beta " ++ show beta)
+      | null xs                           = summaryResult
+--      | trace (summary x ++ " could achieve " ++ show (opposite (resultOutcome xResult)) ++ " and beta is " ++ show beta ++ " - should we prune?") False = undefined
+      | alphaForTail >= beta                  = xResult
+--      | trace "We did not prune. Now we may return xResult." False = undefined
+      | opposite(resultOutcome xResult) >= opposite(resultOutcome tailResult)    = xResult
+--      | trace ("nmr d " ++ show depth ++ " a " ++ show alpha ++ " b " ++ show beta ++ " newA " ++ show alphaForTail ++ " returning tailResult because " ++ show (resultOutcome tailResult) ++ " is worse for the other guy than is " ++ show (resultOutcome xResult)) False = undefined
+      | otherwise                         = tailResult
+      where xResult =
+             (negamark3 x (depth - 1) (opposite beta) (opposite alpha) tMap)
+            tailResult =
+             (negamark3Iterate depth alphaForTail beta xs tMapForTail)
+            alphaForTail = max alpha (opposite (resultOutcome xResult))
+            tMapForTail = Map.union (resultMap xResult) tMap
+            summaryResult = xResult { resultMap = tMapForTail }
