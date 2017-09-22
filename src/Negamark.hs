@@ -237,13 +237,19 @@ module Negamark where
             return (findWinner board)
       | isAutomated (activePlayer board) autoX autoO = do
             let result = pickMove board strength
-            putStrLn ("The best you can do is " ++ show (resultOutcome result))
+            putStrLn $ formatResult result
             ending <- playGame (head (resultMoves result)) autoX autoO strength
             return ending
       | otherwise = do
             nextMove <- getHumanMove board
             ending <- playGame nextMove autoX autoO strength
             return ending
+
+  formatResult :: NegamarkGameState a => NegamarkResult a -> String
+  formatResult result = let
+    playerName = show $ activePlayer $ head $ resultMoves result
+    outcomeName = show $ resultOutcome result
+    in "The best " ++ playerName ++ " can do is " ++ outcomeName
 
   playGameIO :: (NegamarkGameState a, Show a, TranspositionTable t) => a -> Bool -> Bool -> Int -> t -> IO SquareState
   playGameIO board autoX autoO strength table
@@ -255,7 +261,7 @@ module Negamark where
         return (findWinner board)
     | isAutomated (activePlayer board) autoX autoO = do
         result <- pickMoveIO board strength table
-        putStrLn ("The best you can do is " ++ show (resultOutcome result))
+        putStrLn $ formatResult result
         ending <- playGameIO (head (resultMoves result)) autoX autoO strength table
         return ending
     | otherwise = do
