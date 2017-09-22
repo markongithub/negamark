@@ -88,7 +88,7 @@ module Negamark where
         fromTable = liftM (fromMaybe pureFP) queryResult
 -- We only look at the table if the pure firstPass returns a Heuristic.
     in case pureFP of (Heuristic _ _) -> fromTable
-                      otherwise       -> return pureFP
+                      _               -> return pureFP
 
   type TranspositionMap = Map.Map Integer Outcome
   noMap = Map.empty

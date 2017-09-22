@@ -1,6 +1,6 @@
 module ProductGame where
   import Data.Array
-  import Data.List
+  import Data.List (nub)
   import qualified Data.Map as Map
   import Negamark
 
@@ -55,24 +55,24 @@ module ProductGame where
       forwardLookupTable!(fst x)!(snd x), (fst x, snd x))) allTuples)
 
   productCoords :: Int -> SquareXY
-  productCoords product =
-      Map.findWithDefault (error "Invalid square.") product reverseLookupTable
+  productCoords productI =
+      Map.findWithDefault (error "Invalid square.") productI reverseLookupTable
 
   factorsToCoords :: (Int, Int) -> SquareXY
   factorsToCoords (x, y) = productCoords(x * y)
 
   squareState :: SquareArray -> Int -> Int -> SquareState
-  squareState squares row column = squares!row!column
+  squareState squaresA row column = squaresA!row!column
 
   squareAvailable :: ProductGameState -> SquareXY -> Bool
   squareAvailable board (row,column) =
       squareState (squares board) row column == SquareOpen
 
   showSquare :: SquareArray -> SquareXY -> [Char]
-  showSquare squares (r,c)
-      | squareState squares r c == SquareOpen =
+  showSquare squaresA (r,c)
+      | squareState squaresA r c == SquareOpen =
           (take 3 (show (forwardLookupTable!r!c) ++ "  "))
-      | otherwise = show (squareState squares r c) ++ "  "
+      | otherwise = show (squareState squaresA r c) ++ "  "
 
   showRow :: SquareArray -> Int -> [Char]
   showRow board row =
@@ -135,14 +135,13 @@ module ProductGame where
 
   appendToListXY :: Int -> (Int, Int) -> (Array Int (Array Int [Int])) ->  
                     (Array Int (Array Int [Int]))
-  appendToListXY value index matrix =
+  appendToListXY value (row, column) matrix =
       matrix // [(row, matrix!row // [(column, value:matrix!row!column)])]
-      where (row, column) = index
 
   setWinOnTetrad :: Int -> [SquareXY] -> (Array Int (Array Int [Int])) ->
                     (Array Int (Array Int [Int]))
-  setWinOnTetrad winID indices matrix =
-      foldr (appendToListXY winID) matrix indices
+  setWinOnTetrad winID indicesL matrix =
+      foldr (appendToListXY winID) matrix indicesL
 
   setListOfTetrads :: [[SquareXY]] -> Int -> (Array Int (Array Int [Int])) ->
                       (Array Int (Array Int [Int]))
@@ -238,27 +237,27 @@ module ProductGame where
             squareDiff = if top == 0 || bottom == 0 then 0 else fromIntegral (squareUniqueID (row, col) (activePlayer oldBoard))
  
   reverseTopBottomID :: Integer -> FactorPair
-  reverseTopBottomID uniqueID
+  reverseTopBottomID boardID
     | tempTop <= tempBottom = (tempTop, tempBottom)  
     | otherwise = (0, 2 * tempTop + tempBottom - 7)
-    where tempTop = fromIntegral(uniqueID `div` 9) + 1
-          tempBottom = fromIntegral(uniqueID `mod` 9) + 1
+    where tempTop = fromIntegral(boardID `div` 9) + 1
+          tempBottom = fromIntegral(boardID `mod` 9) + 1
  
   reverseUniqueIDInner :: Integer ->
                           (SquareArray, FactorPair)
-  reverseUniqueIDInner uniqueID
-      | uniqueID <= 80 = (twoDArray height width SquareOpen, 
-                          reverseTopBottomID uniqueID)
+  reverseUniqueIDInner boardID
+      | boardID <= 80 = (twoDArray height width SquareOpen, 
+                          reverseTopBottomID boardID)
       | otherwise      = (nextSquares // [(row, nextSquares!row // [(col, reversePlayerIndex(thisDigit - 1))])], snd nextOne)
-      where exp = floor (logBase 3 (fromIntegral(uniqueID)))
-            thisDigit = fromIntegral(uniqueID `div` (3 ^ exp))
-            row = (exp - 4) `div` 6
-            col = (exp - 4) `mod` 6
-            nextOne = reverseUniqueIDInner(uniqueID `mod` (3 ^ exp))
+      where currExp = floor (logBase 3 (fromIntegral(boardID)))
+            thisDigit = fromIntegral(boardID `div` (3 ^ currExp))
+            row = (currExp - 4) `div` 6
+            col = (currExp - 4) `mod` 6
+            nextOne = reverseUniqueIDInner(boardID `mod` (3 ^ currExp))
             nextSquares = fst nextOne
 
   guessMovesSoFar :: SquareArray -> Int
-  guessMovesSoFar squares = length(filter (\x -> squares!(fst x)!(snd x) /= SquareOpen)  [(r,c) | r <- [0..(height - 1)], c <- [0..(width - 1)]])
+  guessMovesSoFar squaresA = length(filter (\x -> squaresA!(fst x)!(snd x) /= SquareOpen)  [(r,c) | r <- [0..(height - 1)], c <- [0..(width - 1)]])
 
   newProductGame :: ProductGameState
   newProductGame =
@@ -278,8 +277,8 @@ module ProductGame where
 
   newSquaresFromMove :: SquareArray -> FactorPair ->
                         SquareState -> SquareArray
-  newSquaresFromMove squares (row, column) player =
-      squares // [(row, squares!row // [(column, player)])] 
+  newSquaresFromMove squaresA (row, column) player =
+      squaresA // [(row, squaresA!row // [(column, player)])] 
 
   newProductGameStateFromMove :: FactorPair -> ProductGameState ->
                                  ProductGameState
