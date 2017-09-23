@@ -3,6 +3,7 @@ module ProductGame where
   import Data.List (nub)
   import qualified Data.Map as Map
   import Negamark
+  import Text.Read (readMaybe)
 
   height = 6
   width = 6
@@ -285,6 +286,18 @@ module ProductGame where
   newSquaresFromMove squaresA (row, column) player =
       squaresA // [(row, squaresA!row // [(column, player)])] 
 
+
+  validateMove :: FactorPair -> ProductGameState ->
+                  Either String ProductGameState
+  validateMove (top, bottom) oldBoard
+    | top == topFactor oldBoard && bottom == bottomFactor oldBoard = Left "Neither factor has been changed. Change exactly one."
+    | top /= topFactor oldBoard && bottom /= bottomFactor oldBoard = Left "Both factors are changed. Change exactly one."
+    | top < 0 || top > 9 || bottom < 0 || bottom > 9 = Left "Factors must be 0-9."
+    | (top == 0 || bottom == 0) && (activePlayer oldBoard == X || movesSoFar oldBoard > 0) = Left "0 factors are only valid in the weird opening move."
+    | not (moveAvailable oldBoard (top, bottom)) = Left "That square is not available."
+    | otherwise = Right $ newProductGameStateFromMove (top, bottom) oldBoard
+
+  -- newProductGameStateFromMove trusts its input. vaidateMove doesn't. 
   newProductGameStateFromMove :: FactorPair -> ProductGameState ->
                                  ProductGameState
   newProductGameStateFromMove (top, bottom) oldBoard
@@ -293,7 +306,7 @@ module ProductGame where
           bottomFactor = bottom,
           activePlayerPG = otherPlayer (activePlayerPG oldBoard),
           uniqueIDPG = updateUniqueID oldBoard (top, bottom),
-          summaryPG = (summaryPG oldBoard ++ " " ++ show (top, bottom))
+          summaryPG = (summaryPG oldBoard ++ "," ++ show (top, bottom))
         }
       | otherwise = ProductGameState { squares =
           newSquaresFromMove (squares oldBoard) coords (activePlayerPG oldBoard)
@@ -304,7 +317,7 @@ module ProductGame where
                        , winScores = (fst scoreUpdate)
                        , quickWinScores = (snd scoreUpdate)
                        , summaryPG =
-              (summaryPG oldBoard ++ " " ++ show (top, bottom))
+              (summaryPG oldBoard ++ "," ++ show (top, bottom))
                        , uniqueIDPG =
               updateUniqueID oldBoard (top, bottom)
                        }
@@ -316,17 +329,28 @@ module ProductGame where
     
   getHumanProductGameMove :: ProductGameState -> IO ProductGameState
   getHumanProductGameMove board = do
+    putStrLn (summary board)
     putStrLn (show board)
     putStrLn ("Enter the two factors for the next move. One must remain the " ++
               "same as in the last move. One must be different. Their " ++
-              "product must be an empty square on this board. If any of " ++
-              "these conditions are not met, the game will crash. So type " ++
-              "carefully. Am I a great programmer or what?")
+              "product must be an empty square on this board.")
     putStrLn "Enter the top factor."
-    top <- getLine
+    topS <- getLine
     putStrLn "Enter the bottom factor."
-    bottom <- getLine
-    return (newProductGameStateFromMove (read top, read bottom) board)
+    bottomS <- getLine
+    validateInput board topS bottomS
+
+  validateInput :: ProductGameState -> String -> String ->
+                   IO ProductGameState
+  validateInput board topS bottomS = let
+    tryAgainWithMsg message = do
+      putStrLn message
+      getHumanProductGameMove board
+    in case (readMaybe topS, readMaybe bottomS) of
+      (Just top, Just bottom) -> case validateMove (top, bottom) board of
+        Left msg    -> tryAgainWithMsg msg
+        Right nextBoard -> return nextBoard
+      _                       -> tryAgainWithMsg "Both factors have to be integers. You knew that, right?"
 
   startGame = do
     playGame newProductGame False True 5
