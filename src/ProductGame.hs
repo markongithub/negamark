@@ -317,9 +317,14 @@ module ProductGame where
   getHumanProductGameMove :: ProductGameState -> IO ProductGameState
   getHumanProductGameMove board = do
     putStrLn (show board)
-    putStrLn "Top factor. If it's invalid in any way we will crash."
+    putStrLn ("Enter the two factors for the next move. One must remain the " ++
+              "same as in the last move. One must be different. Their " ++
+              "product must be an empty square on this board. If any of " ++
+              "these conditions are not met, the game will crash. So type " ++
+              "carefully. Am I a great programmer or what?")
+    putStrLn "Enter the top factor."
     top <- getLine
-    putStrLn "Bottom factor. If it's invalid in any way we will crash."
+    putStrLn "Enter the bottom factor."
     bottom <- getLine
     return (newProductGameStateFromMove (read top, read bottom) board)
 
